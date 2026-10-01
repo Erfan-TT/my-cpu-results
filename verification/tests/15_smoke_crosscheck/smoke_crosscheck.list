@@ -1,0 +1,19 @@
+ line   address	contents
+    1  00000000  20010006	addi r1, r0, 6          ; 0x00
+    2  00000004  20020007	addi r2, r0, 7          ; 0x04
+    3  00000008  0022182e	mult r3, r1, r2         ; 0x08 42
+    4  0000000c  00612020	add  r4, r3, r1         ; 0x0c 48
+    5  00000010  00822822	sub  r5, r4, r2         ; 0x10 41
+    6  00000014  ac030000	sw   0(r0), r3          ; 0x14
+    7  00000018  ac040004	sw   4(r0), r4          ; 0x18
+    8  0000001c  ac050008	sw   8(r0), r5          ; 0x1c
+    9  00000020  8c060000	lw   r6, 0(r0)          ; 42  (load-use follows)
+   10  00000024  00c53820	add  r7, r6, r5         ; 83
+   11  00000028  ac07000c	sw   12(r0), r7
+   12  0000002c  00e2402e	mult r8, r7, r2         ; 581 (mult straight after a load result)
+   13  00000030  ac080010	sw   16(r0), r8
+   14  00000034          	end:
+   15  00000034  0bfffffc	j end
+   16  00000038          	
+   17                      ; end-to-end cross-check: arithmetic, multiply, load/store
+   18  00000038          	

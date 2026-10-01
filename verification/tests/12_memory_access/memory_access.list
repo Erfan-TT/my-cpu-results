@@ -1,0 +1,113 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  12_memory_access -- word, half-word and byte access, and endianness
+    3                      ;=============================================================================
+    4                      ;  Checklist: E1 (lw/sw round trip, register base, positive and negative
+    5                      ;  displacements), E2 (lb/lbu on all four lanes), E3 (lh/lhu on both halves,
+    6                      ;  sign vs zero extension), E4 (store then load the same address).
+    7                      ;
+    8                      ;  DLX is big-endian here: byte address 0 of a word is its MOST significant
+    9                      ;  byte, and half-word address 0 is the upper half.  Half of this file exists
+   10                      ;  to pin that down, because a byte-order slip shows up as plausible-looking
+   11                      ;  values in the wrong lanes.
+   12                      ;
+   13                      ;  Words 64..67 come from the .data section, so a wrong or missing dmem_init
+   14                      ;  image fails here rather than silently reading zeros.
+   15                      ;
+   16                      ;  Result map:
+   17                      ;    0,1 scratch words written by the test itself
+   18                      ;    4 lb0    5 lb1    6 lb2    7 lb3          (signed)
+   19                      ;    8 lbu0   9 lbu1  10 lbu2  11 lbu3         (zero extended)
+   20                      ;   12 lh0   13 lh2   14 lhu0  15 lhu2
+   21                      ;   16 lb of 0x01020304 lane 0  17 lane 3      (endianness, spelled out)
+   22                      ;   18 lw from the init image   19 lb of it    20 lh high  21 lhu low
+   23                      ;   22 register-base store/load 23 negative displacement
+   24                      ;   24 positive displacement    25 store then load the same address
+   25                      ;   26 last word of the init image
+   26                      ;=============================================================================
+   27  00000000          	
+   28  00000000          	.text
+   29  00000000          	
+   30                      ;---- a word with four distinguishable bytes ---------------------------------
+   31  00000000  3c011188	lhi  r1, 0x1188
+   32  00000004  3421f344	ori  r1, r1, 0xF344         ; 0x1188F344
+   33  00000008  ac010000	sw    0(r0), r1
+   34  0000000c          	
+   35  0000000c  80020000	lb   r2, 0(r0)              ; 0x11 -> 0x00000011
+   36  00000010  ac020010	sw   16(r0), r2
+   37  00000014  80020001	lb   r2, 1(r0)              ; 0x88 -> 0xFFFFFF88
+   38  00000018  ac020014	sw   20(r0), r2
+   39  0000001c  80020002	lb   r2, 2(r0)              ; 0xF3 -> 0xFFFFFFF3
+   40  00000020  ac020018	sw   24(r0), r2
+   41  00000024  80020003	lb   r2, 3(r0)              ; 0x44 -> 0x00000044
+   42  00000028  ac02001c	sw   28(r0), r2
+   43  0000002c          	
+   44  0000002c  90030000	lbu  r3, 0(r0)              ; 0x00000011
+   45  00000030  ac030020	sw   32(r0), r3
+   46  00000034  90030001	lbu  r3, 1(r0)              ; 0x00000088
+   47  00000038  ac030024	sw   36(r0), r3
+   48  0000003c  90030002	lbu  r3, 2(r0)              ; 0x000000F3
+   49  00000040  ac030028	sw   40(r0), r3
+   50  00000044  90030003	lbu  r3, 3(r0)              ; 0x00000044
+   51  00000048  ac03002c	sw   44(r0), r3
+   52  0000004c          	
+   53  0000004c  84040000	lh   r4, 0(r0)              ; 0x1188 -> 0x00001188
+   54  00000050  ac040030	sw   48(r0), r4
+   55  00000054  84040002	lh   r4, 2(r0)              ; 0xF344 -> 0xFFFFF344
+   56  00000058  ac040034	sw   52(r0), r4
+   57  0000005c  94050000	lhu  r5, 0(r0)              ; 0x00001188
+   58  00000060  ac050038	sw   56(r0), r5
+   59  00000064  94050002	lhu  r5, 2(r0)              ; 0x0000F344
+   60  00000068  ac05003c	sw   60(r0), r5
+   61  0000006c          	
+   62                      ;---- endianness, spelled out ------------------------------------------------
+   63  0000006c  3c060102	lhi  r6, 0x0102
+   64  00000070  34c60304	ori  r6, r6, 0x0304         ; 0x01020304
+   65  00000074  ac060004	sw    4(r0), r6
+   66  00000078  80070004	lb   r7, 4(r0)              ; must be 1, the most significant byte
+   67  0000007c  ac070040	sw   64(r0), r7
+   68  00000080  80070007	lb   r7, 7(r0)              ; must be 4, the least significant byte
+   69  00000084  ac070044	sw   68(r0), r7
+   70  00000088          	
+   71                      ;---- data that was never written by this program ----------------------------
+   72  00000088  20080100	addi r8, r0, mem            ; 0x100
+   73  0000008c  8d090000	lw   r9, 0(r8)              ; 0x7F80017E, straight from dmem_init
+   74  00000090  ac090048	sw   72(r0), r9
+   75  00000094  810b0000	lb   r11, 0(r8)             ; 0x7F -> 0x0000007F
+   76  00000098  ac0b004c	sw   76(r0), r11
+   77  0000009c  850c0000	lh   r12, 0(r8)             ; 0x7F80 -> 0x00007F80
+   78  000000a0  ac0c0050	sw   80(r0), r12
+   79  000000a4  950d0002	lhu  r13, 2(r8)             ; 0x0000017E
+   80  000000a8  ac0d0054	sw   84(r0), r13
+   81  000000ac          	
+   82                      ;---- addressing modes -------------------------------------------------------
+   83  000000ac  200e00a0	addi r14, r0, 160           ; 0xA0, a free scratch address
+   84  000000b0  200f07c1	addi r15, r0, 1985
+   85  000000b4  adcf0000	sw    0(r14), r15           ; register base, zero displacement
+   86  000000b8  8dd00000	lw   r16, 0(r14)
+   87  000000bc  ac100058	sw   88(r0), r16
+   88  000000c0          	
+   89  000000c0  2011010c	addi r17, r0, 268           ; 0x10C, past the init block
+   90  000000c4  8e32fffc	lw   r18, -4(r17)           ; reads 0x108
+   91  000000c8  ac12005c	sw   92(r0), r18
+   92  000000cc  8d130004	lw   r19, 4(r8)             ; positive displacement off the base
+   93  000000d0  ac130060	sw   96(r0), r19
+   94  000000d4          	
+   95                      ;---- a store and the load right behind it -----------------------------------
+   96  000000d4  2014ffff	addi r20, r0, -1
+   97  000000d8  ac1400a4	sw  164(r0), r20
+   98  000000dc  8c1500a4	lw   r21, 164(r0)
+   99  000000e0  ac150064	sw  100(r0), r21
+  100  000000e4          	
+  101  000000e4  8d16000c	lw   r22, 12(r8)            ; 0xDEADBEEF
+  102  000000e8  ac160068	sw  104(r0), r22
+  103  000000ec          	
+  104  000000ec  0bfffffc	end:    j end
+  105  000000f0          	
+  106                      ;=============================================================================
+  107  000000f0          	.data 256                   ; 0x100
+  108  00000100          	
+  109  00000100  7f80017e	mem:    .word 0x7F80017E            ; 0x100
+  110  00000104  8000ffff	.word 0x8000FFFF            ; 0x104
+  111  00000108  00ff0001	.word 0x00FF0001            ; 0x108
+  112  0000010c  deadbeef	.word 0xDEADBEEF            ; 0x10C

@@ -1,0 +1,112 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  09_mult_parallel -- the multiplier running alongside the rest of the pipe
+    3                      ;=============================================================================
+    4                      ;  Checklist: B2 (independent work issued under a multiply, out-of-order
+    5                      ;  writeback through the shadowed rd), B3 (dependent consumer at distances
+    6                      ;  1/2/3 -- only distance 1 may stall), B4 (back-to-back multiplies and the
+    7                      ;  structural hazard on the shared writeback port), B5 (a product deciding a
+    8                      ;  branch in ID), B6 (a multiply in flight across a jal/jr boundary).
+    9                      ;
+   10                      ;  The products themselves are trivial here on purpose; 08_multiplier already
+   11                      ;  proves the arithmetic.  What is under test is that the right value reaches
+   12                      ;  the right instruction at the right time.
+   13                      ;
+   14                      ;  Result map:
+   15                      ;    0 product, overlapped        1 independent work underneath it
+   16                      ;    2 consumer at distance 1     3 at distance 2      4 at distance 3
+   17                      ;    5 back-to-back A             6 back-to-back B     7 back-to-back C
+   18                      ;    8 dependent multiply chain   9 branch on a zero product
+   19                      ;   10 branch on a non-zero product          11 product across jal/jr
+   20                      ;   12 product as store data     13 WAW: ALU write over a multiply in flight
+   21                      ;   20 written through a product used as a store ADDRESS
+   22                      ;=============================================================================
+   23  00000000          	
+   24  00000000          	.text
+   25  00000000          	
+   26  00000000  20010006	addi r1, r0, 6
+   27  00000004  20020007	addi r2, r0, 7
+   28  00000008  20030003	addi r3, r0, 3
+   29  0000000c          	
+   30                      ;---- B2: the pipeline must not stop while the multiplier works --------------
+   31  0000000c  0022202e	mult r4, r1, r2             ; 42, writes back out of order
+   32  00000010  2005000b	addi r5, r0, 11             ; none of these four may be delayed
+   33  00000014  2006000c	addi r6, r0, 12
+   34  00000018  2007000d	addi r7, r0, 13
+   35  0000001c  00a64020	add  r8, r5, r6             ; 23
+   36  00000020  01074020	add  r8, r8, r7             ; 36
+   37  00000024  ac040000	sw    0(r0), r4
+   38  00000028  ac080004	sw    4(r0), r8
+   39  0000002c          	
+   40                      ;---- B3: the three consumer distances ---------------------------------------
+   41  0000002c  0022482e	mult r9, r1, r2
+   42  00000030  01205820	add  r11, r9, r0            ; distance 1, must stall
+   43  00000034  ac0b0008	sw    8(r0), r11            ; 42
+   44  00000038  0023602e	mult r12, r1, r3
+   45  0000003c  54000000	nop
+   46  00000040  01806820	add  r13, r12, r0           ; distance 2
+   47  00000044  ac0d000c	sw   12(r0), r13            ; 18
+   48  00000048  0043702e	mult r14, r2, r3
+   49  0000004c  54000000	nop
+   50  00000050  54000000	nop
+   51  00000054  01c07820	add  r15, r14, r0           ; distance 3
+   52  00000058  ac0f0010	sw   16(r0), r15            ; 21
+   53  0000005c          	
+   54                      ;---- B4: back to back, three in a row ---------------------------------------
+   55  0000005c  0022802e	mult r16, r1, r2            ; 42
+   56  00000060  0043882e	mult r17, r2, r3            ; 21
+   57  00000064  0023902e	mult r18, r1, r3            ; 18
+   58  00000068  ac100014	sw   20(r0), r16
+   59  0000006c  ac110018	sw   24(r0), r17
+   60  00000070  ac12001c	sw   28(r0), r18
+   61  00000074          	
+   62                      ;---- a chain where every multiply feeds the next ----------------------------
+   63  00000074  20130002	addi r19, r0, 2
+   64  00000078  0273982e	mult r19, r19, r19          ; 4
+   65  0000007c  0273982e	mult r19, r19, r19          ; 16
+   66  00000080  0273982e	mult r19, r19, r19          ; 256
+   67  00000084  0273982e	mult r19, r19, r19          ; 65536
+   68  00000088  ac130020	sw   32(r0), r19
+   69  0000008c          	
+   70                      ;---- B5: the product is the branch condition, resolved in ID ----------------
+   71  0000008c  0020a02e	mult r20, r1, r0            ; 0
+   72  00000090  12800004	beqz r20, mp_zero           ; must see the product, not a stale r20
+   73  00000094  2015006f	addi r21, r0, 111           ; flushed
+   74  00000098          	mp_zero:
+   75  00000098  201500de	addi r21, r0, 222
+   76  0000009c  ac150024	sw   36(r0), r21
+   77  000000a0  0022b02e	mult r22, r1, r2            ; 42
+   78  000000a4  16c00004	bnez r22, mp_nonzero
+   79  000000a8  2017014d	addi r23, r0, 333           ; flushed
+   80  000000ac          	mp_nonzero:
+   81  000000ac  201701bc	addi r23, r0, 444
+   82  000000b0  ac170028	sw   40(r0), r23
+   83  000000b4          	
+   84                      ;---- B6: a multiply still in flight when the subroutine returns -------------
+   85  000000b4  20180009	addi r24, r0, 9
+   86  000000b8  0c000008	jal  mp_square
+   87  000000bc  ac19002c	sw   44(r0), r25            ; 81, completed across the jr
+   88  000000c0  08000008	j    mp_after
+   89  000000c4          	mp_square:
+   90  000000c4  0318c82e	mult r25, r24, r24
+   91  000000c8  4be00000	jr   r31
+   92  000000cc          	mp_after:
+   93  000000cc          	
+   94                      ;---- the product used as an address, and as store data ----------------------
+   95  000000cc  201a0004	addi r26, r0, 4
+   96  000000d0  201b0014	addi r27, r0, 20
+   97  000000d4  035be02e	mult r28, r26, r27          ; 80
+   98  000000d8  af9c0000	sw    0(r28), r28           ; address AND data come from the multiply
+   99  000000dc  035ae82e	mult r29, r26, r26          ; 16
+  100  000000e0  ac1d0030	sw   48(r0), r29
+  101  000000e4          	
+  102                      ;---- WAW: an ALU write landing on a register a multiply still owns ----------
+  103                      ;  The multiplier writes back out of order and the scoreboard does not order
+  104                      ;  writes to the same destination.  The golden model retires in program order,
+  105                      ;  so it says 5.  A mismatch here is a design limitation worth knowing about,
+  106                      ;  not a bad stimulus -- see verification/README.md.
+  107  000000e4  0022f02e	mult r30, r1, r2            ; 42, in flight
+  108  000000e8  201e0005	addi r30, r0, 5             ; overwrites it one instruction later
+  109  000000ec  ac1e0034	sw   52(r0), r30
+  110  000000f0          	
+  111  000000f0  0bfffffc	end:    j end

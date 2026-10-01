@@ -1,0 +1,346 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  power_bench.asm -- switching-activity / VCD workload for the DLX
+    3                      ;=============================================================================
+    4                      ;  Purpose: one self-checking program that keeps every synthesised block of the
+    5                      ;  CPU busy for a few thousand cycles, so a gate-level run of TB_DLX produces a
+    6                      ;  VCD whose switching activity is representative of the whole design rather
+    7                      ;  than of one corner of it.
+    8                      ;
+    9                      ;  What it touches, and why it is here:
+   10                      ;    - P4 adder, logic block, shifter, both comparators  (PHASE 0 and 1)
+   11                      ;    - Booth/Dadda multiplier, both in the overlapped case (independent work
+   12                      ;      issued underneath it) and in the back-to-back dependent case that
+   13                      ;      actually stalls                                    (PHASE 1 and 2)
+   14                      ;    - forwarding paths EX->EX, MEM->EX and the RF bypass (long dependency
+   15                      ;      chains everywhere, plus load-use pairs)
+   16                      ;    - byte / half-word load units                        (PHASE 2)
+   17                      ;    - BTB + 2-bit predictor: one perfectly predictable loop, one alternating
+   18                      ;      branch that mispredicts about half the time, one jal/jr call per
+   19                      ;      iteration, spread over several BTB index rows       (PHASE 3)
+   20                      ;    - special register file, illegal detector, exception PC logic (PHASE 4)
+   21                      ;
+   22                      ;  IMPORTANT -- why PHASE 0 exists.
+   23                      ;  register_file.vhd has no reset; it only has a VHDL signal initialiser, which
+   24                      ;  synthesis drops.  In a gate-level run every GPR therefore starts at 'X'.
+   25                      ;  Reading an un-written register poisons the ALU result, the DRAM address and
+   26                      ;  a large slice of the VCD -- and X nets do not toggle, so the power number
+   27                      ;  comes out silently LOW.  PHASE 0 writes all of r1..r31 before anything reads
+   28                      ;  them.  Keep it first if you edit this file.
+   29                      ;
+   30                      ;  Data map (data RAM byte addresses; the whole 512 B = 128 words that
+   31                      ;  dlxsim.py --compare checks by default):
+   32                      ;      0x000 .. 0x07F   vec_a    32 input words   <- .data, ends up in hex_init.txt
+   33                      ;      0x080 .. 0x0FF   vec_b    32 input words   <- .data
+   34                      ;      0x100 .. 0x17F   vec_out  32 result words
+   35                      ;      0x180 .. 0x1BF   scalar results
+   36                      ;      0x1C0 .. 0x1FF   exception log, 4 causes x 4 words
+   37                      ;
+   38                      ;  Build and check:
+   39                      ;      cd sim/scripts
+   40                      ;      ./assembler.sh ../asm_examples/power_bench.asm
+   41                      ;      python3 ../dlxsim.py ../asm_examples/power_bench.asm --dram-out ../golden.txt
+   42                      ;      <run the simulation>                       -> ../hex_dump.txt, ../dump.vcd
+   43                      ;      python3 ../dlxsim.py ../asm_examples/power_bench.asm \
+   44                      ;              --dram-out /dev/null --compare ../hex_dump.txt
+   45                      ;
+   46                      ;  Length knob: r28 at 'outer' is the number of outer passes.
+   47                      ;=============================================================================
+   48  00000000          	
+   49  00000000          	.text
+   50  00000000          	
+   51  00000000  20010010	addi   r1, r0, vec_table
+   52  00000004  00200030	movi2s VBR, r1
+   53  00000008  08000014	j      main
+   54  0000000c  54000000	nop                         ; pad: special_pc substitutes CAUSE into
+   55                      ; PC bits 3:2, so VBR must be 16-byte aligned
+   56  00000010          	
+   57  00000010          	vec_table:
+   58  00000010  080001e8	j  illegal_handler              ; cause 0
+   59  00000014  080001ec	j  trap_handler                 ; cause 1
+   60  00000018  080001f0	j  inst_mis_handler             ; cause 2
+   61  0000001c  080001f4	j  data_mis_handler             ; cause 3
+   62  00000020          	
+   63                      ;-----------------------------------------------------------------------------
+   64                      ;  PHASE 0 -- write every GPR (see the note above), with wide operands so the
+   65                      ;  adder / logic / shifter all see real toggling.  Also a 33-deep back-to-back
+   66                      ;  dependency chain, i.e. EX->EX forwarding on every single instruction.
+   67                      ;-----------------------------------------------------------------------------
+   68  00000020          	main:
+   69  00000020  3c015a5a	lhi  r1, 0x5A5A
+   70  00000024  34210f0f	ori  r1, r1, 0x0F0F             ; 0x5A5A0F0F
+   71  00000028  3c02a5a5	lhi  r2, 0xA5A5
+   72  0000002c  3442f0f0	ori  r2, r2, 0xF0F0             ; 0xA5A5F0F0
+   73  00000030  00221826	xor  r3,  r1, r2
+   74  00000034  00412020	add  r4,  r2, r1
+   75  00000038  00222822	sub  r5,  r1, r2
+   76  0000003c  58660003	srli r6,  r3, 3
+   77  00000040  50870005	slli r7,  r4, 5
+   78  00000044  00a64025	or   r8,  r5, r6
+   79  00000048  00e14824	and  r9,  r7, r1
+   80  0000004c  01025026	xor  r10, r8, r2
+   81  00000050  01235820	add  r11, r9, r3
+   82  00000054  01446022	sub  r12, r10, r4
+   83  00000058  596d0007	srli r13, r11, 7
+   84  0000005c  518e000b	slli r14, r12, 11
+   85  00000060  01a57825	or   r15, r13, r5
+   86  00000064  01c68024	and  r16, r14, r6
+   87  00000068  01e78826	xor  r17, r15, r7
+   88  0000006c  02089020	add  r18, r16, r8
+   89  00000070  02299822	sub  r19, r17, r9
+   90  00000074  5e540002	srai r20, r18, 2
+   91  00000078  52750001	slli r21, r19, 1
+   92  0000007c  028ab025	or   r22, r20, r10
+   93  00000080  02abb824	and  r23, r21, r11
+   94  00000084  02ccc026	xor  r24, r22, r12
+   95  00000088  02edc820	add  r25, r23, r13
+   96  0000008c  030ed022	sub  r26, r24, r14
+   97  00000090  5b3b0004	srli r27, r25, 4
+   98  00000094  535c0009	slli r28, r26, 9
+   99  00000098  036fe825	or   r29, r27, r15
+  100  0000009c  0390f024	and  r30, r28, r16
+  101  000000a0  03b1f826	xor  r31, r29, r17
+  102  000000a4          	
+  103  000000a4  201c0002	addi r28, r0, 2                 ; <-- outer passes.  Raise to lengthen the VCD.
+  104  000000a8          	
+  105                      ;=============================================================================
+  106  000000a8          	outer:
+  107                      ;-----------------------------------------------------------------------------
+  108                      ;  PHASE 1 -- the main vector kernel, 32 iterations of 24 instructions.
+  109                      ;  Two loads per iteration, one store, one multiply with five independent
+  110                      ;  instructions issued underneath it, and a load-use pair at the top.
+  111                      ;-----------------------------------------------------------------------------
+  112  000000a8  20010000	addi r1, r0, vec_a
+  113  000000ac  20020080	addi r2, r0, vec_b
+  114  000000b0  20030100	addi r3, r0, vec_out
+  115  000000b4  20040020	addi r4, r0, 32
+  116  000000b8  0000a020	add  r20, r0, r0                ; running checksum
+  117  000000bc          	
+  118  000000bc          	loop1:
+  119  000000bc  8c250000	lw   r5, 0(r1)
+  120  000000c0  8c460000	lw   r6, 0(r2)
+  121  000000c4  00a63820	add  r7,  r5, r6                ; load-use, straight after the load
+  122  000000c8  00a64026	xor  r8,  r5, r6
+  123  000000cc  00a64822	sub  r9,  r5, r6
+  124  000000d0  00a65824	and  r11, r5, r6
+  125  000000d4  00a66025	or   r12, r5, r6
+  126  000000d8  58ad0003	srli r13, r5, 3
+  127  000000dc  50ce0005	slli r14, r6, 5
+  128  000000e0  00a6782a	slt  r15, r5, r6                ; signed comparator
+  129  000000e4  00a6803a	sltu r16, r5, r6                ; unsigned comparator
+  130  000000e8  00a6882e	mult r17, r5, r6                ; Booth/Dadda, runs in the shadow
+  131  000000ec  00e89026	xor  r18, r7,  r8               ; ... while these four proceed
+  132  000000f0  012b9820	add  r19, r9,  r11
+  133  000000f4  018da822	sub  r21, r12, r13
+  134  000000f8  01cfb026	xor  r22, r14, r15
+  135  000000fc  0211b820	add  r23, r16, r17              ; here the multiply result is consumed
+  136  00000100  ac770000	sw   0(r3), r23
+  137  00000104  0297a020	add  r20, r20, r23
+  138  00000108  20210004	addi r1, r1, 4
+  139  0000010c  20420004	addi r2, r2, 4
+  140  00000110  20630004	addi r3, r3, 4
+  141  00000114  28840001	subi r4, r4, 1
+  142  00000118  1480ffa0	bnez r4, loop1                  ; taken 31x, not taken once
+  143  0000011c          	
+  144  0000011c  ac740000	sw   0(r3), r20                 ; 0x180  vector checksum
+  145  00000120          	
+  146                      ;-----------------------------------------------------------------------------
+  147                      ;  PHASE 2 -- the multiplier's slow path, plus the sub-word load units.
+  148                      ;  The two mults in the middle are immediately dependent, so this is the
+  149                      ;  stalling case, in contrast with the overlapped one in PHASE 1.
+  150                      ;-----------------------------------------------------------------------------
+  151  00000120  20010000	addi r1, r0, vec_a
+  152  00000124  20040008	addi r4, r0, 8
+  153  00000128  20180001	addi r24, r0, 1
+  154  0000012c  0000c820	add  r25, r0, r0
+  155  00000130          	
+  156  00000130          	loop2:
+  157  00000130  8c250000	lw   r5, 0(r1)
+  158  00000134  30a600ff	andi r6, r5, 0x00FF
+  159  00000138  34c60011	ori  r6, r6, 0x0011             ; never let the carried product hit zero
+  160  0000013c  0306c02e	mult r24, r24, r6               ; carried across the whole loop
+  161  00000140  00a6602e	mult r12, r5, r6
+  162  00000144  0185602e	mult r12, r12, r5               ; back-to-back dependent multiply
+  163  00000148  032cc820	add  r25, r25, r12
+  164  0000014c  80270001	lb   r7,  1(r1)                 ; signed byte
+  165  00000150  90280002	lbu  r8,  2(r1)                 ; unsigned byte
+  166  00000154  84290002	lh   r9,  2(r1)                 ; signed half
+  167  00000158  942b0000	lhu  r11, 0(r1)                 ; unsigned half
+  168  0000015c  0327c820	add  r25, r25, r7
+  169  00000160  0328c820	add  r25, r25, r8
+  170  00000164  0329c820	add  r25, r25, r9
+  171  00000168  032bc820	add  r25, r25, r11
+  172  0000016c  20210004	addi r1, r1, 4
+  173  00000170  28840001	subi r4, r4, 1
+  174  00000174  1480ffb8	bnez r4, loop2
+  175  00000178          	
+  176  00000178  ac780004	sw   4(r3), r24                 ; 0x184
+  177  0000017c  ac790008	sw   8(r3), r25                 ; 0x188
+  178  00000180          	
+  179                      ;-----------------------------------------------------------------------------
+  180                      ;  PHASE 3 -- branch behaviour.
+  181                      ;    loop3   backward branch, taken 15x out of 16    -> predictor saturates
+  182                      ;    beqz    alternates every iteration              -> ~50% misprediction
+  183                      ;    slti/bnez  flips once, halfway through          -> one late mispredict
+  184                      ;    jal/jr  a call and a return every iteration     -> BTB + r31 path
+  185                      ;  The branches sit at different PCs, so they land in different BTB rows
+  186                      ;  (the index is pc[6:2]).
+  187                      ;-----------------------------------------------------------------------------
+  188  00000180  20040010	addi r4, r0, 16
+  189  00000184  0000d020	add  r26, r0, r0
+  190  00000188  0000d820	add  r27, r0, r0
+  191  0000018c          	
+  192  0000018c          	loop3:
+  193  0000018c  30850001	andi r5, r4, 1
+  194  00000190  10a00008	beqz r5, even3
+  195  00000194  235a0003	addi r26, r26, 3
+  196  00000198  08000004	j    cont3
+  197  0000019c          	even3:
+  198  0000019c  237b0005	addi r27, r27, 5
+  199  000001a0          	cont3:
+  200  000001a0  0c00002c	jal  square                     ; multiply inside the callee
+  201  000001a4  034dd020	add  r26, r26, r13
+  202  000001a8  68860008	slti r6, r4, 8
+  203  000001ac  14c00004	bnez r6, low3
+  204  000001b0  237b0001	addi r27, r27, 1
+  205  000001b4          	low3:
+  206  000001b4  28840001	subi r4, r4, 1
+  207  000001b8  1480ffd0	bnez r4, loop3
+  208  000001bc          	
+  209  000001bc  ac7a000c	sw   12(r3), r26                ; 0x18C
+  210  000001c0  ac7b0010	sw   16(r3), r27                ; 0x190
+  211  000001c4          	
+  212  000001c4  2b9c0001	subi r28, r28, 1
+  213  000001c8  1780fedc	bnez r28, outer
+  214  000001cc  08000008	j    exceptions
+  215  000001d0          	
+  216  000001d0          	square:
+  217  000001d0  0084682e	mult r13, r4, r4
+  218  000001d4  4be00000	jr   r31
+  219  000001d8          	
+  220                      ;-----------------------------------------------------------------------------
+  221                      ;  PHASE 4 -- one hit per exception cause.  Runs once, after every result is
+  222                      ;  already in memory, so a problem here cannot disturb the numbers above.
+  223                      ;  Delete the four lines between 'exceptions:' and 'movs2i' to drop it.
+  224                      ;-----------------------------------------------------------------------------
+  225  000001d8          	exceptions:
+  226  000001d8  200a01c0	addi r10, r0, 0x1C0             ; exception log pointer
+  227  000001dc  44000007	trap 7                          ; cause 1, tval 7
+  228  000001e0  00000000	.word 0x00000000                ; cause 0 : opcode 0 with func 0 is illegal
+  229  000001e4  8c130012	lw   r19, 18(r0)                ; cause 3 : misaligned word load
+  230  000001e8  20030009	addi r3, r0, 9
+  231  000001ec  48600000	jr   r3                         ; cause 2 : misaligned jump target
+  232  000001f0  00042831	movs2i r5, STATUS               ; IE back, EXL clear
+  233  000001f4  08000000	j    end
+  234  000001f8          	
+  235  000001f8  0bfffffc	end:    j end
+  236  000001fc          	
+  237  000001fc          	illegal_handler:
+  238  000001fc  200b0064	addi r11, r0, 100
+  239  00000200  08000014	j    exc_common
+  240  00000204          	trap_handler:
+  241  00000204  200b00c8	addi r11, r0, 200
+  242  00000208  0800000c	j    exc_common
+  243  0000020c          	inst_mis_handler:
+  244  0000020c  200b012c	addi r11, r0, 300
+  245  00000210  08000004	j    exc_common
+  246  00000214          	data_mis_handler:
+  247  00000214  200b0190	addi r11, r0, 400
+  248  00000218          	exc_common:
+  249  00000218  ad4b0000	sw   0(r10), r11
+  250  0000021c  00022831	movs2i r5, CAUSE
+  251  00000220  ad450004	sw   4(r10), r5
+  252  00000224  00032831	movs2i r5, TVAL
+  253  00000228  ad450008	sw   8(r10), r5
+  254  0000022c  00042831	movs2i r5, STATUS
+  255  00000230  ad45000c	sw   12(r10), r5
+  256  00000234  00014031	movs2i r8, IAR
+  257  00000238  214a0010	addi r10, r10, 16
+  258  0000023c  21080004	addi r8, r8, 4
+  259  00000240  01000830	movi2s IAR, r8
+  260  00000244  40000000	rfe
+  261  00000248          	
+  262                      ;=============================================================================
+  263                      ;  INPUT DATA -- this is what ends up in hex_init.txt.
+  264                      ;  Chosen for toggling: all-ones and all-zeros, the two checkerboards, byte
+  265                      ;  and half-word patterns, walking ones, the two extremes of the signed range,
+  266                      ;  and some unstructured values.  The a/b pairs are deliberately mismatched so
+  267                      ;  slt vs sltu disagree on several of them and the multiplier sees both small
+  268                      ;  and full-width operands.
+  269                      ;=============================================================================
+  270  00000248          	.data 0
+  271  00000000          	
+  272  00000000          	vec_a:                                  ; 0x000
+  273  00000000  00000000	.word 0x00000000, 0xFFFFFFFF, 0x5A5A5A5A, 0xA5A5A5A5
+  273  00000004  ffffffff	
+  273  00000008  5a5a5a5a	
+  273  0000000c  a5a5a5a5	
+  274  00000010  0000ffff	.word 0x0000FFFF, 0xFFFF0000, 0x0F0F0F0F, 0xF0F0F0F0
+  274  00000014  ffff0000	
+  274  00000018  0f0f0f0f	
+  274  0000001c  f0f0f0f0	
+  275  00000020  00ff00ff	.word 0x00FF00FF, 0xFF00FF00, 0x33333333, 0xCCCCCCCC
+  275  00000024  ff00ff00	
+  275  00000028  33333333	
+  275  0000002c  cccccccc	
+  276  00000030  80000000	.word 0x80000000, 0x7FFFFFFF, 0x00000001, 0xFFFFFFFE
+  276  00000034  7fffffff	
+  276  00000038  00000001	
+  276  0000003c  fffffffe	
+  277  00000040  12345678	.word 0x12345678, 0x87654321, 0xDEADBEEF, 0xCAFEBABE
+  277  00000044  87654321	
+  277  00000048  deadbeef	
+  277  0000004c  cafebabe	
+  278  00000050  00000002	.word 0x00000002, 0x00000004, 0x00000008, 0x00000010
+  278  00000054  00000004	
+  278  00000058  00000008	
+  278  0000005c  00000010	
+  279  00000060  00010000	.word 0x00010000, 0x00100000, 0x01000000, 0x10000000
+  279  00000064  00100000	
+  279  00000068  01000000	
+  279  0000006c  10000000	
+  280  00000070  13579bdf	.word 0x13579BDF, 0x2468ACE0, 0xA5A50F0F, 0x5A5AF0F0
+  280  00000074  2468ace0	
+  280  00000078  a5a50f0f	
+  280  0000007c  5a5af0f0	
+  281  00000080          	
+  282  00000080          	vec_b:                                  ; 0x080
+  283  00000080  ffffffff	.word 0xFFFFFFFF, 0x00000000, 0xA5A5A5A5, 0x5A5A5A5A
+  283  00000084  00000000	
+  283  00000088  a5a5a5a5	
+  283  0000008c  5a5a5a5a	
+  284  00000090  ffff0000	.word 0xFFFF0000, 0x0000FFFF, 0xF0F0F0F0, 0x0F0F0F0F
+  284  00000094  0000ffff	
+  284  00000098  f0f0f0f0	
+  284  0000009c  0f0f0f0f	
+  285  000000a0  ff00ff00	.word 0xFF00FF00, 0x00FF00FF, 0xCCCCCCCC, 0x33333333
+  285  000000a4  00ff00ff	
+  285  000000a8  cccccccc	
+  285  000000ac  33333333	
+  286  000000b0  7fffffff	.word 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF, 0x00000003
+  286  000000b4  80000000	
+  286  000000b8  ffffffff	
+  286  000000bc  00000003	
+  287  000000c0  0badf00d	.word 0x0BADF00D, 0x1BADB002, 0xFEEDFACE, 0x8BADF00D
+  287  000000c4  1badb002	
+  287  000000c8  feedface	
+  287  000000cc  8badf00d	
+  288  000000d0  00000003	.word 0x00000003, 0x00000007, 0x0000000F, 0x0000001F
+  288  000000d4  00000007	
+  288  000000d8  0000000f	
+  288  000000dc  0000001f	
+  289  000000e0  00008000	.word 0x00008000, 0x00080000, 0x00800000, 0x08000000
+  289  000000e4  00080000	
+  289  000000e8  00800000	
+  289  000000ec  08000000	
+  290  000000f0  eca86420	.word 0xECA86420, 0xFDB97531, 0x0F0FA5A5, 0xF0F05A5A
+  290  000000f4  fdb97531	
+  290  000000f8  0f0fa5a5	
+  290  000000fc  f0f05a5a	
+  291  00000100          	
+  292  00000100          	vec_out:                                ; 0x100
+  293  00000100          	.space 128
+  294  00000180          	scalars:                                ; 0x180
+  295  00000180          	.space 64
+  296  000001c0          	exc_log:                                ; 0x1C0
+  297  000001c0          	.space 64

@@ -1,0 +1,159 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  22_branch_operand_hazard -- operands read in the ID stage
+    3                      ;=============================================================================
+    4                      ;  Branches and jumps resolve in ID, and two different things are read there.
+    5                      ;
+    6                      ;  The CONDITION (beqz/bnez/bltz/...) goes through decision_unit, which takes
+    7                      ;  the zero/sign flags and, when fw_ex_id_rs1 is set, the EX/MEM flags instead
+    8                      ;  of recomputing them from the register.  With the one-cycle stall
+    9                      ;  hazard_detection inserts for a branch whose rs1 is still in flight, that
+   10                      ;  covers every distance.
+   11                      ;
+   12                      ;  The TARGET of jr/jalr is the register VALUE, not a flag, so it needs its own
+   13                      ;  path.  It used to have none -- branch_correction's mux_1 took register_in
+   14                      ;  straight off the register file -- and a jr or jalr whose target register was
+   15                      ;  written one or two instructions earlier jumped to the stale value.  decode
+   16                      ;  now muxes register_in to the EX/MEM result under the same fw_ex_id_rs1 that
+   17                      ;  already selects the flags, which closes both distances.  decision_unit keeps
+   18                      ;  the raw RF_out1, so the condition path does not pay for the mux.
+   19                      ;
+   20                      ;  This file is what pinned that bug and is what proves it stays fixed.  Every
+   21                      ;  case is written so a stale read is VISIBLE: the register is pre-loaded with
+   22                      ;  a second, valid address, so a stale read lands on a block that records 0
+   23                      ;  rather than silently re-running the setup and converging anyway.  That is
+   24                      ;  exactly how the bug hid -- a jr to a stale 0 restarts the program, and an
+   25                      ;  idempotent program then produces the right memory image on its next pass.
+   26                      ;  Keep that property if you add a case here.
+   27                      ;
+   28                      ;  All seven words must read 1.
+   29                      ;
+   30                      ;  Result map:
+   31                      ;    0 jr target, distance 1     1 jr target, distance 2   2 jr target, d 3
+   32                      ;    3 jalr target, distance 1
+   33                      ;    4 condition, distance 1     5 condition, distance 2   6 condition, d 3
+   34                      ;    7 branch on a LOADED zero      8 on a loaded negative   9 on a loaded
+   35                      ;      non-zero read from address 0
+   36                      ;
+   37                      ;  Words 7-9 exist because the flags stored beside a register have to describe
+   38                      ;  the value that was WRITTEN to it.  For a load that is the loaded data, not
+   39                      ;  the ALU output -- and the ALU output on a load is the effective ADDRESS.
+   40                      ;  Each case is built so the address and the value disagree about being zero or
+   41                      ;  negative, so taking the flags from the wrong one flips the branch:
+   42                      ;    7  value 0        at address 128  (non-zero)  -> beqz must be taken
+   43                      ;    8  value negative at address 132  (positive)  -> bltz must be taken
+   44                      ;    9  value 1        at address 0    (zero)      -> beqz must NOT be taken
+   45                      ;  Loads never forward into ID (forwarding.vhd cancels on RM), so all three
+   46                      ;  read the stored flags, whatever the distance.
+   47                      ;=============================================================================
+   48  00000000          	
+   49  00000000          	.text
+   50  00000000          	
+   51                      ;---- jr target, produced one instruction earlier ----------------------------
+   52  00000000  20010010	addi r1, r0, bad_a          ; what a stale read returns
+   53  00000004  20010018	addi r1, r0, good_a         ; what it must return
+   54  00000008  48200000	jr   r1
+   55  0000000c  54000000	nop
+   56  00000010  200a0000	bad_a:  addi r10, r0, 0
+   57  00000014  08000004	j    join_a
+   58  00000018  200a0001	good_a: addi r10, r0, 1
+   59  0000001c  ac0a0000	join_a: sw    0(r0), r10
+   60  00000020          	
+   61                      ;---- jr target, produced two instructions earlier ---------------------------
+   62  00000020  20020034	addi r2, r0, bad_b
+   63  00000024  2002003c	addi r2, r0, good_b
+   64  00000028  54000000	nop
+   65  0000002c  48400000	jr   r2
+   66  00000030  54000000	nop
+   67  00000034  200b0000	bad_b:  addi r11, r0, 0
+   68  00000038  08000004	j    join_b
+   69  0000003c  200b0001	good_b: addi r11, r0, 1
+   70  00000040  ac0b0004	join_b: sw    4(r0), r11
+   71  00000044          	
+   72                      ;---- jr target, produced three instructions earlier -------------------------
+   73  00000044  2003005c	addi r3, r0, bad_c
+   74  00000048  20030064	addi r3, r0, good_c
+   75  0000004c  54000000	nop
+   76  00000050  54000000	nop
+   77  00000054  48600000	jr   r3
+   78  00000058  54000000	nop
+   79  0000005c  200c0000	bad_c:  addi r12, r0, 0
+   80  00000060  08000004	j    join_c
+   81  00000064  200c0001	good_c: addi r12, r0, 1
+   82  00000068  ac0c0008	join_c: sw    8(r0), r12
+   83  0000006c          	
+   84                      ;---- jalr target, produced one instruction earlier --------------------------
+   85  0000006c  2004007c	addi r4, r0, bad_d
+   86  00000070  20040084	addi r4, r0, good_d
+   87  00000074  4c800000	jalr r4
+   88  00000078  54000000	nop
+   89  0000007c  200d0000	bad_d:  addi r13, r0, 0
+   90  00000080  08000004	j    join_d
+   91  00000084  200d0001	good_d: addi r13, r0, 1
+   92  00000088  ac0d000c	join_d: sw   12(r0), r13
+   93  0000008c          	
+   94                      ;---- branch condition, produced one instruction earlier ---------------------
+   95                      ;  The EX flags are forwarded, so this one should already be right.
+   96  0000008c  20050007	addi r5, r0, 7              ; stale value is non-zero
+   97  00000090  200e0001	addi r14, r0, 1
+   98  00000094  00002820	add  r5, r0, r0             ; fresh value is zero
+   99  00000098  10a00004	beqz r5, join_e
+  100  0000009c  200e0000	addi r14, r0, 0
+  101  000000a0  ac0e0010	join_e: sw   16(r0), r14
+  102  000000a4          	
+  103                      ;---- branch condition, produced two instructions earlier --------------------
+  104  000000a4  20060007	addi r6, r0, 7
+  105  000000a8  200f0001	addi r15, r0, 1
+  106  000000ac  00003020	add  r6, r0, r0
+  107  000000b0  54000000	nop
+  108  000000b4  10c00004	beqz r6, join_f
+  109  000000b8  200f0000	addi r15, r0, 0
+  110  000000bc  ac0f0014	join_f: sw   20(r0), r15
+  111  000000c0          	
+  112                      ;---- branch condition, produced three instructions earlier ------------------
+  113  000000c0  20070007	addi r7, r0, 7
+  114  000000c4  20100001	addi r16, r0, 1
+  115  000000c8  00003820	add  r7, r0, r0
+  116  000000cc  54000000	nop
+  117  000000d0  54000000	nop
+  118  000000d4  10e00004	beqz r7, join_g
+  119  000000d8  20100000	addi r16, r0, 0
+  120  000000dc  ac100018	join_g: sw   24(r0), r16
+  121  000000e0          	
+  122  000000e0          	
+  123                      ;---- the flags stored beside a register must describe the LOADED value ------
+  124  000000e0  20180001	addi r24, r0, 1
+  125  000000e4  8c150080	lw   r21, 128(r0)           ; value 0, from a non-zero address
+  126  000000e8  54000000	nop
+  127  000000ec  54000000	nop
+  128  000000f0  12a00004	beqz r21, ld_zero
+  129  000000f4  0000c020	add  r24, r0, r0
+  130  000000f8          	ld_zero:
+  131  000000f8  ac18001c	sw   28(r0), r24            ; 1 if the flags came from the value
+  132  000000fc          	
+  133  000000fc  20190001	addi r25, r0, 1
+  134  00000100  8c160084	lw   r22, 132(r0)           ; value 0xFFFFFFFF, from a positive address
+  135  00000104  54000000	nop
+  136  00000108  54000000	nop
+  137  0000010c  06c00004	bltz r22, ld_neg
+  138  00000110  0000c820	add  r25, r0, r0
+  139  00000114          	ld_neg:
+  140  00000114  ac190020	sw   32(r0), r25
+  141  00000118          	
+  142  00000118  201a0001	addi r26, r0, 1
+  143  0000011c  8c170000	lw   r23, 0(r0)             ; value 1 (stored by case 0), address zero
+  144  00000120  54000000	nop
+  145  00000124  54000000	nop
+  146  00000128  12e00004	beqz r23, ld_bad            ; must NOT be taken
+  147  0000012c  08000004	j    ld_join
+  148  00000130  0000d020	ld_bad: add  r26, r0, r0
+  149  00000134          	ld_join:
+  150  00000134  ac1a0024	sw   36(r0), r26
+  151  00000138          	
+  152  00000138  0bfffffc	end:    j end
+  153  0000013c          	
+  154                      ;=============================================================================
+  155  0000013c          	.data 128
+  156  00000080          	
+  157  00000080  00000000	.word 0x00000000            ; 0x80
+  158  00000084  ffffffff	.word 0xFFFFFFFF            ; 0x84

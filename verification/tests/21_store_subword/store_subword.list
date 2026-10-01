@@ -1,0 +1,152 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  21_store_subword -- sb and sh
+    3                      ;=============================================================================
+    4                      ;  Checklist: E10 (sub-word stores), E11 (read-modify-write of the containing
+    5                      ;  word), E12 (only the low byte / half of the source register is stored),
+    6                      ;  F5 (a misaligned sh faults, an odd-addressed sb does not).
+    7                      ;
+    8                      ;  A sub-word store is the one memory operation that has to PRESERVE what it
+    9                      ;  does not write.  So every target word below starts from a recognisable
+   10                      ;  pattern in the .data image, and the dump shows the merge directly: a word
+   11                      ;  that comes back as 0x000000xx means the memory overwrote instead of merging,
+   12                      ;  and a word whose byte landed in the wrong lane means the byte address or
+   13                      ;  store_size did not reach the memory intact.
+   14                      ;
+   15                      ;  The source register is always wide (0xDEADBE01 and friends) so that a path
+   16                      ;  which forgets to mask down to the low byte / half is visible too.
+   17                      ;
+   18                      ;  Data map:
+   19                      ;    0x00..0x27  targets, pre-loaded from .data and modified in place
+   20                      ;    0x40..0x6F  read-backs
+   21                      ;    0x80..0x8F  exception log: marker, CAUSE, TVAL, STATUS
+   22                      ;
+   23                      ;  Result map:
+   24                      ;    word  0  sb into lane 0        1  lane 1        2  lane 2     3  lane 3
+   25                      ;          4  sh into the high half 5  sh into the low half
+   26                      ;          6  four sb building one word
+   27                      ;          7  two sh building one word
+   28                      ;          8  sb whose data came from a load    9  sh, same
+   29                      ;         16  lb  of lane 0        17  lbu of lane 0
+   30                      ;         18  lb  of an untouched lane (sign extended)
+   31                      ;         19  sb at an odd address, read back    20 lbu of lane 0 of word 1
+   32                      ;         21  lh  of the stored half             22 lhu of it
+   33                      ;         23  lh  of the untouched half
+   34                      ;         24  the four-sb word     25 the two-sh word
+   35                      ;         26  the load-fed sb word 27 the load-fed sh word
+   36                      ;         32  handler marker (400)  33 CAUSE (3)  34 TVAL (0x11)  35 STATUS
+   37                      ;=============================================================================
+   38  00000000          	
+   39  00000000          	.text
+   40  00000000          	
+   41  00000000  20010010	addi   r1, r0, vec_table
+   42  00000004  00200030	movi2s VBR, r1
+   43  00000008  08000014	j      main
+   44  0000000c  54000000	nop                         ; pad: special_pc substitutes CAUSE into
+   45                      ; PC bits 3:2, so VBR must be 16-byte aligned
+   46  00000010          	
+   47  00000010          	vec_table:
+   48  00000010  080000e0	j  exc_handler                  ; cause 0, illegal
+   49  00000014  080000dc	j  exc_handler                  ; cause 1, trap
+   50  00000018  080000d8	j  exc_handler                  ; cause 2, misaligned target
+   51  0000001c  080000d4	j  exc_handler                  ; cause 3, misaligned data
+   52  00000020          	
+   53  00000020          	main:
+   54  00000020  3c01dead	lhi  r1, 0xDEAD
+   55  00000024  3421be01	ori  r1, r1, 0xBE01             ; 0xDEADBE01 -- only 0x01 / 0xBE01 may reach memory
+   56  00000028          	
+   57                      ;---- one sb into each lane of its own word ----------------------------------
+   58  00000028  a0010000	sb    0(r0), r1                 ; 0xAAAAAAAA -> 0x01AAAAAA
+   59  0000002c  a0010005	sb    5(r0), r1                 ; 0xBBBBBBBB -> 0xBB01BBBB   (odd address, legal)
+   60  00000030  a001000a	sb   10(r0), r1                 ; 0xCCCCCCCC -> 0xCCCC01CC
+   61  00000034  a001000f	sb   15(r0), r1                 ; 0xDDDDDDDD -> 0xDDDDDD01
+   62  00000038          	
+   63                      ;---- one sh into each half --------------------------------------------------
+   64  00000038  a4010010	sh   16(r0), r1                 ; 0xEEEEEEEE -> 0xBE01EEEE
+   65  0000003c  a4010016	sh   22(r0), r1                 ; 0x11111111 -> 0x1111BE01
+   66  00000040          	
+   67                      ;---- four sb building a single word, each right after its producer ----------
+   68                      ;  Each store's data is forwarded EX->EX into the masking path.
+   69  00000040  20070001	addi r7, r0, 1
+   70  00000044  a0070018	sb   24(r0), r7
+   71  00000048  20070002	addi r7, r0, 2
+   72  0000004c  a0070019	sb   25(r0), r7
+   73  00000050  20070003	addi r7, r0, 3
+   74  00000054  a007001a	sb   26(r0), r7
+   75  00000058  20070004	addi r7, r0, 4
+   76  0000005c  a007001b	sb   27(r0), r7                 ; 0x22222222 -> 0x01020304
+   77  00000060          	
+   78                      ;---- two sh building a single word ------------------------------------------
+   79  00000060  3408f00d	ori  r8, r0, 0xF00D             ; 0x0000F00D
+   80  00000064  a408001c	sh   28(r0), r8
+   81  00000068  3c09ffff	lhi  r9, 0xFFFF
+   82  0000006c  3529beef	ori  r9, r9, 0xBEEF             ; 0xFFFFBEEF -- upper half must be dropped
+   83  00000070  a409001e	sh   30(r0), r9                 ; 0x33333333 -> 0xF00DBEEF
+   84  00000074          	
+   85                      ;---- store data coming straight out of a load (MEM->MEM forwarding) ---------
+   86  00000074  8c050028	lw   r5, 40(r0)                 ; 0x8899AABB
+   87  00000078  a0050020	sb   32(r0), r5                 ; 0x44444444 -> 0xBB444444
+   88  0000007c  8c060028	lw   r6, 40(r0)
+   89  00000080  a4060026	sh   38(r0), r6                 ; 0x55555555 -> 0x5555AABB
+   90  00000084          	
+   91                      ;---- read the merged words back ---------------------------------------------
+   92  00000084  800b0000	lb   r11, 0(r0)                 ; 0x01
+   93  00000088  ac0b0040	sw   64(r0), r11
+   94  0000008c  900b0000	lbu  r11, 0(r0)                 ; 0x01
+   95  00000090  ac0b0044	sw   68(r0), r11
+   96  00000094  800b0001	lb   r11, 1(r0)                 ; 0xAA, untouched -> sign extended
+   97  00000098  ac0b0048	sw   72(r0), r11
+   98  0000009c  800b0005	lb   r11, 5(r0)                 ; 0x01 at an odd address
+   99  000000a0  ac0b004c	sw   76(r0), r11
+  100  000000a4  900b0004	lbu  r11, 4(r0)                 ; 0xBB, the lane sb must not have touched
+  101  000000a8  ac0b0050	sw   80(r0), r11
+  102  000000ac  840c0010	lh   r12, 16(r0)                ; 0xBE01 -> sign extended
+  103  000000b0  ac0c0054	sw   84(r0), r12
+  104  000000b4  940c0010	lhu  r12, 16(r0)                ; 0x0000BE01
+  105  000000b8  ac0c0058	sw   88(r0), r12
+  106  000000bc  840c0012	lh   r12, 18(r0)                ; 0xEEEE, untouched half
+  107  000000c0  ac0c005c	sw   92(r0), r12
+  108  000000c4  8c0d0018	lw   r13, 24(r0)                ; 0x01020304
+  109  000000c8  ac0d0060	sw   96(r0), r13
+  110  000000cc  8c0d001c	lw   r13, 28(r0)                ; 0xF00DBEEF
+  111  000000d0  ac0d0064	sw  100(r0), r13
+  112  000000d4  8c0d0020	lw   r13, 32(r0)                ; 0xBB444444
+  113  000000d8  ac0d0068	sw  104(r0), r13
+  114  000000dc  8c0d0024	lw   r13, 36(r0)                ; 0x5555AABB
+  115  000000e0  ac0d006c	sw  108(r0), r13
+  116  000000e4          	
+  117                      ;---- alignment: sb never faults, sh on an odd address does ------------------
+  118  000000e4  200a0080	addi r10, r0, 128               ; exception log pointer
+  119  000000e8  a0010011	sb   17(r0), r1                 ; odd address, perfectly legal
+  120  000000ec  a4010011	sh   17(r0), r1                 ; odd address -> DATA_ADDR_MISALIGNED
+  121  000000f0          	
+  122  000000f0  0bfffffc	end:    j end
+  123  000000f4          	
+  124  000000f4          	exc_handler:
+  125  000000f4  200e0190	addi r14, r0, 400
+  126  000000f8  ad4e0000	sw   0(r10), r14
+  127  000000fc  00027831	movs2i r15, CAUSE
+  128  00000100  ad4f0004	sw   4(r10), r15
+  129  00000104  00037831	movs2i r15, TVAL
+  130  00000108  ad4f0008	sw   8(r10), r15
+  131  0000010c  00047831	movs2i r15, STATUS
+  132  00000110  ad4f000c	sw  12(r10), r15
+  133  00000114  00018031	movs2i r16, IAR
+  134  00000118  22100004	addi r16, r16, 4                ; skip the faulting store
+  135  0000011c  02000830	movi2s IAR, r16
+  136  00000120  40000000	rfe
+  137  00000124          	
+  138                      ;=============================================================================
+  139  00000124          	.data 0
+  140  00000000          	
+  141  00000000  aaaaaaaa	targ:   .word 0xAAAAAAAA                ; 0x00  sb lane 0
+  142  00000004  bbbbbbbb	.word 0xBBBBBBBB                ; 0x04  sb lane 1
+  143  00000008  cccccccc	.word 0xCCCCCCCC                ; 0x08  sb lane 2
+  144  0000000c  dddddddd	.word 0xDDDDDDDD                ; 0x0C  sb lane 3
+  145  00000010  eeeeeeee	.word 0xEEEEEEEE                ; 0x10  sh high half
+  146  00000014  11111111	.word 0x11111111                ; 0x14  sh low half
+  147  00000018  22222222	.word 0x22222222                ; 0x18  four sb
+  148  0000001c  33333333	.word 0x33333333                ; 0x1C  two sh
+  149  00000020  44444444	.word 0x44444444                ; 0x20  sb fed by a load
+  150  00000024  55555555	.word 0x55555555                ; 0x24  sh fed by a load
+  151  00000028  8899aabb	src:    .word 0x8899AABB                ; 0x28  source word

@@ -1,0 +1,60 @@
+Information: Propagating switching activity (medium effort zero delay simulation). (PWR-6)
+ 
+****************************************
+Report : power
+        -analysis_effort medium
+Design : DLX
+Version: W-2024.09-SP2
+Date   : Tue Sep 29 15:31:17 2026
+****************************************
+
+
+Library(s) Used:
+
+    NangateOpenCellLibrary (File: /home/repository/do/libnandgate/NangateOpenCellLibrary_typical_ecsm.db)
+
+
+Operating Conditions: typical   Library: NangateOpenCellLibrary
+Wire Load Model Mode: top
+
+Design        Wire Load Model            Library
+------------------------------------------------
+DLX                    5K_hvratio_1_1    NangateOpenCellLibrary
+
+
+Global Operating Voltage = 1.1  
+Power-specific unit information :
+    Voltage Units = 1V
+    Capacitance Units = 1.000000ff
+    Time Units = 1ns
+    Dynamic Power Units = 1uW    (derived from V,C,T units)
+    Leakage Power Units = 1nW
+
+
+Attributes
+----------
+i - Including register clock pin internal power
+
+
+  Cell Internal Power  =   3.5960 mW   (79%)
+  Net Switching Power  = 973.3459 uW   (21%)
+                         ---------
+Total Dynamic Power    =   4.5694 mW  (100%)
+
+Cell Leakage Power     = 545.6459 uW
+
+
+                 Internal         Switching           Leakage            Total
+Power Group      Power            Power               Power              Power   (   %    )  Attrs
+--------------------------------------------------------------------------------------------------
+io_pad             0.0000            0.0000            0.0000            0.0000  (   0.00%)
+memory             0.0000            0.0000            0.0000            0.0000  (   0.00%)
+black_box          0.0000            0.0000            0.0000            0.0000  (   0.00%)
+clock_network  3.3515e+03          784.0790        4.3734e+03        4.1400e+03  (  80.95%)  i
+register          93.1494           17.5134        2.1282e+05          323.4831  (   6.32%)
+sequential         0.0000            0.0000            0.0000            0.0000  (   0.00%)
+combinational    151.3984          171.0751        3.2845e+05          650.9265  (  12.73%)
+--------------------------------------------------------------------------------------------------
+Total          3.5961e+03 uW       972.6675 uW     5.4565e+05 nW     5.1144e+03 uW
+1
+

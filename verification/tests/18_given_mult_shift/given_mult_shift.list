@@ -1,0 +1,43 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  18_given_mult_shift -- provided example: multiply feeding a shift loop
+    3                      ;=============================================================================
+    4                      ;  The program is the provided Mult0.asm, unchanged in what it computes.  What
+    5                      ;  is new is that the results now reach memory.
+    6                      ;
+    7                      ;  As provided, this test verified NOTHING: Mult0.asm has no store, so both the
+    8                      ;  golden image and the RTL image were 512 words of zero and --compare matched
+    9                      ;  no matter what the multiplier or the shifter did.  The four stores below
+   10                      ;  make the product, the pre-shift value, the trip count and the final value
+   11                      ;  observable.
+   12                      ;
+   13                      ;  The shape worth keeping is the loop body: 'srli' immediately followed by
+   14                      ;  'bnez' on the register it just wrote, i.e. a branch whose condition comes
+   15                      ;  from the instruction directly in front of it, with a data-dependent exit.
+   16                      ;  The trip counter is therefore incremented BEFORE the srli, so that
+   17                      ;  adjacency is preserved.
+   18                      ;
+   19                      ;  Result map:
+   20                      ;    0 product 6*7          1 product + 2      2 shift trips     3 final value
+   21                      ;=============================================================================
+   22  00000000          	
+   23  00000000          	.text
+   24  00000000          	
+   25  00000000  20010006	addi r1, r0, 6
+   26  00000004  20020007	addi r2, r0, 7
+   27  00000008  0022182e	mult r3, r1, r2             ; 42
+   28  0000000c  ac030000	sw    0(r0), r3
+   29  00000010  20630002	addi r3, r3, 2              ; 44 = 0b101100
+   30  00000014  ac030004	sw    4(r0), r3
+   31  00000018  00002020	add  r4, r0, r0             ; trip counter
+   32  0000001c          	
+   33  0000001c          	shift:
+   34  0000001c  20840001	addi r4, r4, 1
+   35  00000020  58630001	srli r3, r3, 1              ; 22, 11, 5, 2, 1, 0
+   36  00000024  1460fff4	bnez r3, shift              ; condition from the instruction in front
+   37  00000028          	
+   38  00000028  ac040008	sw    8(r0), r4             ; 6 trips
+   39  0000002c  ac03000c	sw   12(r0), r3             ; 0
+   40  00000030          	
+   41  00000030          	fine:
+   42  00000030  0bfffffc	j fine

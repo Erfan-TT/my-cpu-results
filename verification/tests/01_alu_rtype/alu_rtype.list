@@ -1,0 +1,109 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  01_alu_rtype -- R-type arithmetic, logic and register-amount shifts
+    3                      ;=============================================================================
+    4                      ;  Checklist: A1 (add/addu/sub/subu), A2 (and/or/xor), A3 (sll/srl/sra).
+    5                      ;
+    6                      ;  Every case lands in one word of data memory, in order, so a --compare
+    7                      ;  mismatch points straight at the operation.  Each 'sw' sits immediately
+    8                      ;  after its producer, so the store data also travels the EX->EX forwarding
+    9                      ;  path for rs2.
+   10                      ;
+   11                      ;  Result map (data word -> what is being checked):
+   12                      ;    0 add wide      1 add signed ovf   2 add carry-out    3 addu ovf
+   13                      ;    4 addu          5 sub wide         6 sub borrow       7 sub signed udf
+   14                      ;    8 subu          9 sub self        10 and            11 and ones
+   15                      ;   12 or           13 or zero         14 xor            15 xor self
+   16                      ;   16 xor ones     17 sll 1          18 sll 0          19 sll 31
+   17                      ;   20 sll 35(=3)   21 srl 1          22 srl 31         23 srl 0
+   18                      ;   24 sra 1        25 sra 31 neg     26 sra 31 pos     27 sra 35(=3)
+   19                      ;   28 sra 0
+   20                      ;=============================================================================
+   21  00000000          	
+   22  00000000          	.text
+   23  00000000          	
+   24                      ;---- operands ---------------------------------------------------------------
+   25  00000000  3c015a5a	lhi  r1, 0x5A5A
+   26  00000004  34210f0f	ori  r1, r1, 0x0F0F         ; r1 = 0x5A5A0F0F
+   27  00000008  3c02a5a5	lhi  r2, 0xA5A5
+   28  0000000c  3442f0f0	ori  r2, r2, 0xF0F0         ; r2 = 0xA5A5F0F0  (= ~r1)
+   29  00000010  20030001	addi r3, r0, 1              ; r3 = 1
+   30  00000014  2004ffff	addi r4, r0, -1             ; r4 = 0xFFFFFFFF
+   31  00000018  3c057fff	lhi  r5, 0x7FFF
+   32  0000001c  34a5ffff	ori  r5, r5, 0xFFFF         ; r5 = 0x7FFFFFFF  (INT_MAX)
+   33  00000020  3c068000	lhi  r6, 0x8000             ; r6 = 0x80000000  (INT_MIN)
+   34  00000024  2007001f	addi r7, r0, 31             ; r7 = 31
+   35  00000028  20080023	addi r8, r0, 35             ; r8 = 35  -> only the low 5 bits shift
+   36  0000002c  00004820	add  r9, r0, r0             ; r9 = 0
+   37  00000030          	
+   38                      ;---- add / addu -------------------------------------------------------------
+   39  00000030  00225020	add  r10, r1, r2            ; 0xFFFFFFFF
+   40  00000034  ac0a0000	sw    0(r0), r10
+   41  00000038  00a35020	add  r10, r5, r3            ; INT_MAX+1 wraps to 0x80000000
+   42  0000003c  ac0a0004	sw    4(r0), r10
+   43  00000040  00835020	add  r10, r4, r3            ; -1+1, carry out is discarded -> 0
+   44  00000044  ac0a0008	sw    8(r0), r10
+   45  00000048  00a35021	addu r10, r5, r3            ; same adder, unsigned mnemonic
+   46  0000004c  ac0a000c	sw   12(r0), r10
+   47  00000050  00845021	addu r10, r4, r4            ; 0xFFFFFFFE
+   48  00000054  ac0a0010	sw   16(r0), r10
+   49  00000058          	
+   50                      ;---- sub / subu -------------------------------------------------------------
+   51  00000058  00225022	sub  r10, r1, r2            ; 0xB4B41E1F
+   52  0000005c  ac0a0014	sw   20(r0), r10
+   53  00000060  01235022	sub  r10, r9, r3            ; 0-1 borrows -> 0xFFFFFFFF
+   54  00000064  ac0a0018	sw   24(r0), r10
+   55  00000068  00c35022	sub  r10, r6, r3            ; INT_MIN-1 wraps to 0x7FFFFFFF
+   56  0000006c  ac0a001c	sw   28(r0), r10
+   57  00000070  01245023	subu r10, r9, r4            ; 0-(-1) -> 1
+   58  00000074  ac0a0020	sw   32(r0), r10
+   59  00000078  00845022	sub  r10, r4, r4            ; 0
+   60  0000007c  ac0a0024	sw   36(r0), r10
+   61  00000080          	
+   62                      ;---- and / or / xor ---------------------------------------------------------
+   63  00000080  00225024	and  r10, r1, r2            ; complementary patterns -> 0
+   64  00000084  ac0a0028	sw   40(r0), r10
+   65  00000088  00245024	and  r10, r1, r4            ; identity
+   66  0000008c  ac0a002c	sw   44(r0), r10
+   67  00000090  00225025	or   r10, r1, r2            ; 0xFFFFFFFF
+   68  00000094  ac0a0030	sw   48(r0), r10
+   69  00000098  00295025	or   r10, r1, r9            ; identity
+   70  0000009c  ac0a0034	sw   52(r0), r10
+   71  000000a0  00225026	xor  r10, r1, r2            ; 0xFFFFFFFF
+   72  000000a4  ac0a0038	sw   56(r0), r10
+   73  000000a8  00215026	xor  r10, r1, r1            ; 0
+   74  000000ac  ac0a003c	sw   60(r0), r10
+   75  000000b0  00245026	xor  r10, r1, r4            ; ones-complement -> 0xA5A5F0F0
+   76  000000b4  ac0a0040	sw   64(r0), r10
+   77  000000b8          	
+   78                      ;---- sll --------------------------------------------------------------------
+   79  000000b8  00235004	sll  r10, r1, r3            ; << 1
+   80  000000bc  ac0a0044	sw   68(r0), r10
+   81  000000c0  00295004	sll  r10, r1, r9            ; << 0  must be a no-op
+   82  000000c4  ac0a0048	sw   72(r0), r10
+   83  000000c8  00675004	sll  r10, r3, r7            ; 1 << 31 -> 0x80000000
+   84  000000cc  ac0a004c	sw   76(r0), r10
+   85  000000d0  00285004	sll  r10, r1, r8            ; << 35: only B[4:0] counts, so << 3
+   86  000000d4  ac0a0050	sw   80(r0), r10
+   87  000000d8          	
+   88                      ;---- srl --------------------------------------------------------------------
+   89  000000d8  00435006	srl  r10, r2, r3            ; logical >> 1, zero fill
+   90  000000dc  ac0a0054	sw   84(r0), r10
+   91  000000e0  00c75006	srl  r10, r6, r7            ; 0x80000000 >> 31 -> 1
+   92  000000e4  ac0a0058	sw   88(r0), r10
+   93  000000e8  00895006	srl  r10, r4, r9            ; >> 0
+   94  000000ec  ac0a005c	sw   92(r0), r10
+   95  000000f0          	
+   96                      ;---- sra --------------------------------------------------------------------
+   97  000000f0  00435007	sra  r10, r2, r3            ; arithmetic >> 1, sign fill
+   98  000000f4  ac0a0060	sw   96(r0), r10
+   99  000000f8  00c75007	sra  r10, r6, r7            ; INT_MIN >> 31 -> 0xFFFFFFFF
+  100  000000fc  ac0a0064	sw  100(r0), r10
+  101  00000100  00a75007	sra  r10, r5, r7            ; INT_MAX >> 31 -> 0
+  102  00000104  ac0a0068	sw  104(r0), r10
+  103  00000108  00885007	sra  r10, r4, r8            ; >> 35 masks to >> 3, still all ones
+  104  0000010c  ac0a006c	sw  108(r0), r10
+  105  00000110  00295007	sra  r10, r1, r9            ; >> 0
+  106  00000114  ac0a0070	sw  112(r0), r10
+  107  00000118          	
+  108  00000118  0bfffffc	end:    j end

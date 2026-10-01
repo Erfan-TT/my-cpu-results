@@ -1,0 +1,88 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  23_misaligned_jump_repeat -- a misaligned jr executed more than once
+    3                      ;=============================================================================
+    4                      ;  The BTB used to be told to INVALIDATE the row of any branch whose target was
+    5                      ;  misaligned, so such a jump was never predicted.  That invalidate path was
+    6                      ;  removed because it put target_in(1 downto 0) -- and therefore the register
+    7                      ;  file read -- on the BTB write-enable, which was the critical path.
+    8                      ;
+    9                      ;  Dropping it means a misaligned jump now DOES get a BTB entry, with the
+   10                      ;  target truncated to bits 31:2 (the BTB cannot store the low two bits), so on
+   11                      ;  every execution after the first it is predicted taken to the truncated
+   12                      ;  address.  The claim is that this costs one wasted speculative fetch and
+   13                      ;  nothing else: the jump still resolves in ID, illegal_detector still raises
+   14                      ;  INST_ADDR_MISALIGNED with the full misaligned target as TVAL, and the
+   15                      ;  exception still squashes whatever was fetched speculatively.
+   16                      ;
+   17                      ;  No existing test executed a misaligned jump twice, so nothing checked that.
+   18                      ;  This one runs it three times and logs CAUSE and TVAL each trip -- so trips 2
+   19                      ;  and 3, the predicted ones, have to look exactly like trip 1.
+   20                      ;
+   21                      ;  The truncated target points at 'poison', which stores a sentinel.  If
+   22                      ;  speculation past the faulting jump can ever retire, word 10 comes back as
+   23                      ;  0xBADBAD and the whole premise is wrong.
+   24                      ;
+   25                      ;  Result map:
+   26                      ;    0,1  trip 1: CAUSE, TVAL      2,3  trip 2      4,5  trip 3
+   27                      ;    8    trips completed (3)
+   28                      ;   10    sentinel slot -- must stay 0
+   29                      ;=============================================================================
+   30  00000000          	
+   31  00000000          	.text
+   32  00000000          	
+   33  00000000  20010010	addi   r1, r0, vec_table
+   34  00000004  00200030	movi2s VBR, r1
+   35  00000008  08000014	j      main
+   36  0000000c  54000000	nop                         ; pad: VBR must be 16-byte aligned
+   37  00000010          	
+   38  00000010          	vec_table:
+   39  00000010  08000074	j  other_handler            ; cause 0, illegal
+   40  00000014  08000070	j  other_handler            ; cause 1, trap
+   41  00000018  08000048	j  inst_mis_handler         ; cause 2, misaligned target
+   42  0000001c  08000068	j  other_handler            ; cause 3, misaligned data
+   43  00000020          	
+   44  00000020          	main:
+   45  00000020  00005020	add  r10, r0, r0            ; exception log pointer
+   46  00000024  20050003	addi r5, r0, 3              ; three trips
+   47  00000028  00003020	add  r6, r0, r0             ; completed counter
+   48  0000002c  20030051	addi r3, r0, poison+1       ; misaligned: truncates to 'poison'
+   49  00000030  54000000	nop
+   50  00000034  54000000	nop
+   51  00000038          	
+   52  00000038          	loop:
+   53  00000038  48600000	jr   r3                     ; must fault every trip, predicted or not
+   54  0000003c  20c60001	addi r6, r6, 1              ; the handler returns here, IAR+4
+   55  00000040  28a50001	subi r5, r5, 1
+   56  00000044  14a0fff0	bnez r5, loop
+   57  00000048          	
+   58  00000048  ac060020	sw   32(r0), r6             ; 3
+   59  0000004c  08000010	j    end
+   60  00000050          	
+   61                      ;  Reached only if a speculative fetch of the truncated target ever retires.
+   62  00000050          	poison:
+   63  00000050  3c1400ba	lhi  r20, 0x00BA
+   64  00000054  3694dbad	ori  r20, r20, 0xDBAD
+   65  00000058  ac140028	sw   40(r0), r20            ; 0xBADBAD would mean speculation committed
+   66  0000005c  08000000	j    end
+   67  00000060          	
+   68  00000060  0bfffffc	end:    j end
+   69  00000064          	
+   70  00000064          	inst_mis_handler:
+   71  00000064  00025831	movs2i r11, CAUSE
+   72  00000068  ad4b0000	sw   0(r10), r11            ; 2 every trip
+   73  0000006c  00035831	movs2i r11, TVAL
+   74  00000070  ad4b0004	sw   4(r10), r11            ; the full misaligned target, every trip
+   75  00000074  214a0008	addi r10, r10, 8
+   76  00000078  00014031	movs2i r8, IAR
+   77  0000007c  21080004	addi r8, r8, 4              ; step over the faulting jr
+   78  00000080  01000830	movi2s IAR, r8
+   79  00000084  40000000	rfe
+   80  00000088          	
+   81  00000088          	other_handler:
+   82  00000088  200b03e7	addi r11, r0, 999           ; an unexpected cause would show up here
+   83  0000008c  ac0b002c	sw  44(r0), r11
+   84  00000090  00014031	movs2i r8, IAR
+   85  00000094  21080004	addi r8, r8, 4
+   86  00000098  01000830	movi2s IAR, r8
+   87  0000009c  40000000	rfe

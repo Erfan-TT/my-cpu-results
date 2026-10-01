@@ -1,0 +1,29 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  05_r0_writeback -- a discarded r0 write must not reach the RF bypass
+    3                      ;=============================================================================
+    4                      ;  Checklist: A11, C9.  Companion to 04_r0_source, which covers the EX->EX and
+    5                      ;  MEM->EX distances; this one is the writeback / register-file-bypass
+    6                      ;  distance, where the producer is in WB while the consumer is in ID.
+    7                      ;
+    8                      ;  The answer being checked is a ZERO, so word 0 carries a liveness marker
+    9                      ;  first: without it an image of all zeros would also be produced by a program
+   10                      ;  that never ran at all, and the compare could not tell the difference.
+   11                      ;
+   12                      ;  Result map:  0 marker (0x5EED), must be present
+   13                      ;               1 r4, must be 0 and never the discarded 10
+   14                      ;=============================================================================
+   15  00000000          	
+   16  00000000          	.text
+   17  00000000          	
+   18  00000000  20095eed	addi r9, r0, 24301          ; 0x5EED, liveness marker
+   19  00000004  ac090000	sw   0(r0), r9
+   20  00000008          	
+   21  00000008  20010005	addi r1, r0, 5
+   22  0000000c  00210020	add  r0, r1, r1             ; result 10, must be discarded
+   23  00000010  54000000	nop
+   24  00000014  54000000	nop
+   25  00000018  20040000	addi r4, r0, 0              ; producer is in WB while this is in ID
+   26  0000001c  ac040004	sw   4(r0), r4
+   27  00000020          	end:
+   28  00000020  0bfffffc	j end

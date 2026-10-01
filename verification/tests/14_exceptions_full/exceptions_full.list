@@ -1,0 +1,223 @@
+ line   address	contents
+    1                      ; pc = 0
+    2  00000000  54000000	nop ; aligning the VBR to 4 bit zero
+    3  00000004  20010010	addi r1, r0, vector_base
+    4  00000008  00200030	movi2s vbr, r1
+    5  0000000c  08000010	j main
+    6  00000010          	
+    7  00000010          	vector_base:
+    8  00000010  08000128	j illegal_instruction_handler ; vbr equal to 16, with cause zero
+    9  00000014  0800016c	j trap_handler
+   10  00000018  080000d8	j misaligned_inst_addr_handler
+   11  0000001c  080001f4	j misaligned_load_addr_handler
+   12  00000020          	
+   13  00000020          	
+   14  00000020          	main:
+   15  00000020  00005020	add r10, r0, r0 ; initialize memory index : r10
+   16  00000024  20020005	addi r2, r0, 5
+   17  00000028  20430004	addi r3, r2, 4
+   18  0000002c          	
+   19  0000002c  48600000	jr r3
+   20  00000030          	
+   21  00000030  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   22  00000034  ad4c0000	sw 0(r10), r12
+   23  00000038  214a0004	addi r10, r10, 4
+   24  0000003c          	
+   25  0000003c  0bffffcb	j 11
+   26  00000040          	
+   27  00000040  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   28  00000044  ad4c0000	sw 0(r10), r12
+   29  00000048  214a0004	addi r10, r10, 4
+   30  0000004c          	
+   31  0000004c  1000ffc2	beqz r0, 18
+   32  00000050          	
+   33  00000050  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   34  00000054  ad4c0000	sw 0(r10), r12
+   35  00000058  214a0004	addi r10, r10, 4
+   36  0000005c          	
+   37                      ;sb f1, f2, f3 ; illegal instruction that will assembeled, should raise exception
+   38  0000005c          	
+   39  0000005c  00000000	.word 0x00000000 ; illegal instruction
+   40  00000060          	
+   41  00000060  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   42  00000064  ad4c0000	sw 0(r10), r12
+   43  00000068  214a0004	addi r10, r10, 4
+   44  0000006c          	
+   45  0000006c  0040f030	movi2s r30, r2 ; r30 with 30 register index, max rd is 4
+   46  00000070          	
+   47  00000070  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   48  00000074  ad4c0000	sw 0(r10), r12
+   49  00000078  214a0004	addi r10, r10, 4
+   50  0000007c          	
+   51  0000007c  001e1031	movs2i r2, r30
+   52  00000080          	
+   53  00000080  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   54  00000084  ad4c0000	sw 0(r10), r12
+   55  00000088  214a0004	addi r10, r10, 4
+   56  0000008c          	
+   57  0000008c  ad420000	sw 0(r10), r2 ; should put 5 there still, no moving from sp_reg
+   58  00000090  214a0004	addi r10, r10, 4
+   59  00000094          	
+   60  00000094  44000002	trap 2
+   61  00000098          	
+   62  00000098  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   63  0000009c  ad4c0000	sw 0(r10), r12
+   64  000000a0  214a0004	addi r10, r10, 4
+   65  000000a4          	
+   66  000000a4  44000007	trap 7
+   67  000000a8          	
+   68  000000a8  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   69  000000ac  ad4c0000	sw 0(r10), r12
+   70  000000b0  214a0004	addi r10, r10, 4
+   71  000000b4          	
+   72  000000b4  44000005	trap 5
+   73  000000b8          	
+   74  000000b8  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   75  000000bc  ad4c0000	sw 0(r10), r12
+   76  000000c0  214a0004	addi r10, r10, 4
+   77  000000c4          	
+   78  000000c4  8c130012	lw r19, 18(r0)
+   79  000000c8          	
+   80  000000c8  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   81  000000cc  ad4c0000	sw 0(r10), r12
+   82  000000d0  214a0004	addi r10, r10, 4
+   83  000000d4          	
+   84  000000d4  84130011	lh r19, 17(r0)
+   85  000000d8          	
+   86  000000d8  200cffff	addi r12, r0, 65535 ;   putting 0xFFFFFFFF, seperating between exception results
+   87  000000dc  ad4c0000	sw 0(r10), r12
+   88  000000e0  214a0004	addi r10, r10, 4
+   89  000000e4          	
+   90  000000e4  00045831	movs2i r11, STATUS
+   91  000000e8  ad4b0000	sw 0(r10), r11 ; the rfe should return the IE back into one
+   92  000000ec          	
+   93  000000ec  08000000	j end
+   94  000000f0          	
+   95  000000f0          	end:
+   96  000000f0  0bfffffc	j end
+   97  000000f4          	
+   98  000000f4          	
+   99  000000f4          	
+  100  000000f4          	
+  101  000000f4          	misaligned_inst_addr_handler:
+  102  000000f4          	
+  103  000000f4  00002831	movs2i r5, VBR
+  104  000000f8  ad450000	sw 0(r10), r5
+  105  000000fc  214a0004	addi r10, r10, 4
+  106  00000100  00042831	movs2i r5, STATUS
+  107  00000104  ad450000	sw 0(r10), r5
+  108  00000108  214a0004	addi r10, r10, 4
+  109  0000010c  00022831	movs2i r5, CAUSE
+  110  00000110  ad450000	sw 0(r10), r5
+  111  00000114  214a0004	addi r10, r10, 4
+  112  00000118  00032831	movs2i r5, TVAL
+  113  0000011c  ad450000	sw 0(r10), r5
+  114  00000120  214a0004	addi r10, r10, 4
+  115  00000124  00014031	movs2i r8, IAR
+  116  00000128  ad480000	sw 0(r10), r8
+  117  0000012c  214a0004	addi r10, r10, 4
+  118  00000130          	
+  119  00000130  21080004	addi r8, r8, 4
+  120  00000134  01000830	movi2s IAR, r8 ; skiping back
+  121  00000138  40000000	rfe
+  122  0000013c          	
+  123  0000013c          	
+  124  0000013c          	illegal_instruction_handler:
+  125  0000013c          	
+  126  0000013c  00002831	movs2i r5, VBR
+  127  00000140  ad450000	sw 0(r10), r5
+  128  00000144  214a0004	addi r10, r10, 4
+  129  00000148  00042831	movs2i r5, STATUS
+  130  0000014c  ad450000	sw 0(r10), r5
+  131  00000150  214a0004	addi r10, r10, 4
+  132  00000154  00022831	movs2i r5, CAUSE
+  133  00000158  ad450000	sw 0(r10), r5
+  134  0000015c  214a0004	addi r10, r10, 4
+  135  00000160  00032831	movs2i r5, TVAL
+  136  00000164  ad450000	sw 0(r10), r5
+  137  00000168  214a0004	addi r10, r10, 4
+  138  0000016c  00014031	movs2i r8, IAR
+  139  00000170  ad480000	sw 0(r10), r8
+  140  00000174  214a0004	addi r10, r10, 4
+  141  00000178          	
+  142  00000178  21080004	addi r8, r8, 4
+  143  0000017c  01000830	movi2s IAR, r8 ; skiping back
+  144  00000180  40000000	rfe
+  145  00000184          	
+  146  00000184          	
+  147  00000184          	trap_handler: 
+  148  00000184          	
+  149  00000184  00002831	movs2i r5, VBR
+  150  00000188  ad450000	sw 0(r10), r5
+  151  0000018c  214a0004	addi r10, r10, 4
+  152  00000190          	
+  153  00000190  00042831	movs2i r5, STATUS
+  154  00000194  ad450000	sw 0(r10), r5
+  155  00000198  214a0004	addi r10, r10, 4
+  156  0000019c          	
+  157  0000019c  00022831	movs2i r5, CAUSE
+  158  000001a0  ad450000	sw 0(r10), r5
+  159  000001a4  214a0004	addi r10, r10, 4
+  160  000001a8          	
+  161  000001a8  00014031	movs2i r8, IAR ; r8 holds the pc of trap instruction
+  162  000001ac  ad480000	sw 0(r10), r8
+  163  000001b0  214a0004	addi r10, r10, 4
+  164  000001b4          	
+  165  000001b4  00032831	movs2i r5, TVAL
+  166  000001b8  ad450000	sw 0(r10), r5
+  167  000001bc  214a0004	addi r10, r10, 4
+  168  000001c0          	
+  169  000001c0  28a90007	subi r9, r5, 7
+  170  000001c4  11200014	beqz r9, trap_7
+  171  000001c8          	
+  172  000001c8  28a90005	subi r9, r5, 5
+  173  000001cc  1120002c	beqz r9, trap_5
+  174  000001d0          	
+  175  000001d0  21080004	addi r8, r8, 4 ; continuing back to the program if none of the trap numbers where there
+  176  000001d4  01000830	movi2s IAR, r8 ; skiping back
+  177  000001d8  40000000	rfe
+  178  000001dc          	
+  179  000001dc          	trap_7:
+  180  000001dc  200f0001	addi r15, r0, 1
+  181  000001e0  21f00006	addi r16, r15, 6
+  182  000001e4  020f802e	mult r16, r16, r15 ; result is 7, checking against multiplying 1 to 7
+  183  000001e8  ad500000	sw 0(r10), r16
+  184  000001ec  214a0004	addi r10, r10, 4
+  185  000001f0          	
+  186  000001f0  21080004	addi r8, r8, 4 ; continuing back to the program
+  187  000001f4  01000830	movi2s IAR, r8 ; skiping back
+  188  000001f8  40000000	rfe
+  189  000001fc          	
+  190  000001fc          	trap_5:
+  191  000001fc  20100005	addi r16, r0, 5
+  192  00000200  ad500000	sw 0(r10), r16
+  193  00000204  214a0004	addi r10, r10, 4
+  194  00000208          	
+  195  00000208  21080004	addi r8, r8, 4 ; continuing back to the program
+  196  0000020c  01000830	movi2s IAR, r8 ; skiping back
+  197  00000210  40000000	rfe
+  198  00000214          	
+  199  00000214          	
+  200  00000214          	
+  201  00000214          	misaligned_load_addr_handler: 
+  202  00000214          	
+  203  00000214  00002831	movs2i r5, VBR
+  204  00000218  ad450000	sw 0(r10), r5
+  205  0000021c  214a0004	addi r10, r10, 4
+  206  00000220  00042831	movs2i r5, STATUS
+  207  00000224  ad450000	sw 0(r10), r5
+  208  00000228  214a0004	addi r10, r10, 4
+  209  0000022c  00022831	movs2i r5, CAUSE
+  210  00000230  ad450000	sw 0(r10), r5
+  211  00000234  214a0004	addi r10, r10, 4
+  212  00000238  00032831	movs2i r5, TVAL
+  213  0000023c  ad450000	sw 0(r10), r5
+  214  00000240  214a0004	addi r10, r10, 4
+  215  00000244  00014031	movs2i r8, IAR
+  216  00000248  ad480000	sw 0(r10), r8
+  217  0000024c  214a0004	addi r10, r10, 4
+  218  00000250          	
+  219  00000250  21080004	addi r8, r8, 4
+  220  00000254  01000830	movi2s IAR, r8 ; skiping back
+  221  00000258  40000000	rfe
+  222  0000025c          	

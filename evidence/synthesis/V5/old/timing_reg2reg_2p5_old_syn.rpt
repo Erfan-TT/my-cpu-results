@@ -1,0 +1,771 @@
+ 
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -nworst 2
+        -group REG2REG
+        -max_paths 10
+Design : DLX
+Version: W-2024.09-SP2
+Date   : Tue Sep 29 13:23:43 2026
+****************************************
+
+Operating Conditions: typical   Library: NangateOpenCellLibrary
+Wire Load Model Mode: top
+
+  Startpoint: DP_i/mem_access_i_rd_out_reg_i_Y_reg_0_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/execute_i_zero_alu_bit_Y_reg
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/mem_access_i_rd_out_reg_i_Y_reg_0_/CK (DFF_X1)   0.0000     0.0500 r
+  DP_i/mem_access_i_rd_out_reg_i_Y_reg_0_/Q (DFF_X1)    0.1164     0.1664 f
+  DP_i/rd_mem_w_0_ (DataPath)                           0.0000     0.1664 f
+  U1092/ZN (INV_X1)                                     0.0665     0.2329 r
+  U1277/ZN (OAI22_X1)                                   0.0429     0.2758 f
+  U1278/ZN (INV_X1)                                     0.0290     0.3048 r
+  U806/ZN (AND3_X1)                                     0.0495     0.3543 r
+  U1282/ZN (OAI211_X1)                                  0.0420     0.3963 f
+  U1283/ZN (NOR3_X1)                                    0.0783     0.4745 r
+  DP_i/fw_mem_ex_rs1 (DataPath)                         0.0000     0.4745 r
+  DP_i/U54/ZN (OR2_X1)                                  0.1118     0.5863 r
+  DP_i/U400/Z (BUF_X1)                                  0.1215     0.7078 r
+  DP_i/U523/ZN (OAI222_X4)                              0.1305     0.8383 f
+  DP_i/U644/ZN (XNOR2_X1)                               0.0972     0.9355 f
+  DP_i/U324/ZN (INV_X1)                                 0.0336     0.9691 r
+  DP_i/U250/ZN (AND3_X1)                                0.0619     1.0309 r
+  DP_i/U645/ZN (AOI21_X1)                               0.0313     1.0622 f
+  DP_i/U650/ZN (AOI22_X1)                               0.0544     1.1166 r
+  DP_i/U745/CO (FA_X1)                                  0.0779     1.1945 r
+  DP_i/U343/ZN (NAND2_X1)                               0.0333     1.2278 f
+  DP_i/U99/ZN (NOR2_X1)                                 0.0505     1.2783 r
+  DP_i/U235/ZN (XNOR2_X1)                               0.0763     1.3546 r
+  DP_i/U63/ZN (OR2_X1)                                  0.0531     1.4077 r
+  DP_i/U328/ZN (NAND2_X1)                               0.0357     1.4435 f
+  DP_i/U659/ZN (NOR2_X1)                                0.0520     1.4955 r
+  DP_i/U660/S (FA_X1)                                   0.1243     1.6197 f
+  DP_i/U323/ZN (NAND2_X1)                               0.0436     1.6633 r
+  DP_i/U322/ZN (OAI211_X2)                              0.0581     1.7214 f
+  DP_i/U330/ZN (AND3_X1)                                0.0535     1.7750 f
+  DP_i/U712/ZN (OAI21_X1)                               0.0860     1.8610 r
+  DP_i/U713/ZN (OAI21_X1)                               0.0560     1.9169 f
+  DP_i/U715/ZN (OAI21_X1)                               0.0588     1.9757 r
+  DP_i/U716/ZN (XNOR2_X1)                               0.0682     2.0439 r
+  DP_i/U84/ZN (AND2_X1)                                 0.0513     2.0952 r
+  DP_i/U157/ZN (AND3_X1)                                0.0518     2.1469 r
+  DP_i/U155/ZN (AOI22_X1)                               0.0347     2.1816 f
+  DP_i/U755/ZN (AOI21_X1)                               0.0627     2.2443 r
+  DP_i/U759/ZN (OAI221_X1)                              0.0499     2.2942 f
+  DP_i/U760/ZN (OAI22_X1)                               0.0719     2.3661 r
+  DP_i/U338/ZN (NAND2_X1)                               0.0348     2.4009 f
+  DP_i/U336/ZN (NAND4_X1)                               0.0343     2.4352 r
+  DP_i/U208/ZN (NAND2_X1)                               0.0279     2.4632 f
+  DP_i/execute_i_zero_alu_bit_Y_reg/D (DFF_X1)          0.0104     2.4736 f
+  data arrival time                                                2.4736
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/execute_i_zero_alu_bit_Y_reg/CK (DFF_X1)         0.0000     2.5000 r
+  library setup time                                   -0.0246     2.4754
+  data required time                                               2.4754
+  --------------------------------------------------------------------------
+  data required time                                               2.4754
+  data arrival time                                               -2.4736
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0018
+
+
+  Startpoint: DP_i/mem_access_i_rd_out_reg_i_Y_reg_0_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/execute_i_zero_alu_bit_Y_reg
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/mem_access_i_rd_out_reg_i_Y_reg_0_/CK (DFF_X1)   0.0000     0.0500 r
+  DP_i/mem_access_i_rd_out_reg_i_Y_reg_0_/Q (DFF_X1)    0.1164     0.1664 f
+  DP_i/rd_mem_w_0_ (DataPath)                           0.0000     0.1664 f
+  U1092/ZN (INV_X1)                                     0.0665     0.2329 r
+  U1277/ZN (OAI22_X1)                                   0.0429     0.2758 f
+  U1278/ZN (INV_X1)                                     0.0290     0.3048 r
+  U806/ZN (AND3_X1)                                     0.0495     0.3543 r
+  U1282/ZN (OAI211_X1)                                  0.0420     0.3963 f
+  U1283/ZN (NOR3_X1)                                    0.0783     0.4745 r
+  DP_i/fw_mem_ex_rs1 (DataPath)                         0.0000     0.4745 r
+  DP_i/U54/ZN (OR2_X1)                                  0.1118     0.5863 r
+  DP_i/U400/Z (BUF_X1)                                  0.1215     0.7078 r
+  DP_i/U523/ZN (OAI222_X4)                              0.1305     0.8383 f
+  DP_i/U644/ZN (XNOR2_X1)                               0.0972     0.9355 f
+  DP_i/U324/ZN (INV_X1)                                 0.0336     0.9691 r
+  DP_i/U250/ZN (AND3_X1)                                0.0619     1.0309 r
+  DP_i/U645/ZN (AOI21_X1)                               0.0301     1.0611 f
+  DP_i/U650/ZN (AOI22_X1)                               0.0544     1.1155 r
+  DP_i/U745/CO (FA_X1)                                  0.0779     1.1934 r
+  DP_i/U343/ZN (NAND2_X1)                               0.0333     1.2267 f
+  DP_i/U99/ZN (NOR2_X1)                                 0.0505     1.2772 r
+  DP_i/U235/ZN (XNOR2_X1)                               0.0763     1.3535 r
+  DP_i/U63/ZN (OR2_X1)                                  0.0531     1.4066 r
+  DP_i/U328/ZN (NAND2_X1)                               0.0357     1.4423 f
+  DP_i/U659/ZN (NOR2_X1)                                0.0520     1.4943 r
+  DP_i/U660/S (FA_X1)                                   0.1243     1.6186 f
+  DP_i/U323/ZN (NAND2_X1)                               0.0436     1.6622 r
+  DP_i/U322/ZN (OAI211_X2)                              0.0581     1.7203 f
+  DP_i/U330/ZN (AND3_X1)                                0.0535     1.7738 f
+  DP_i/U712/ZN (OAI21_X1)                               0.0860     1.8598 r
+  DP_i/U713/ZN (OAI21_X1)                               0.0560     1.9158 f
+  DP_i/U715/ZN (OAI21_X1)                               0.0588     1.9745 r
+  DP_i/U716/ZN (XNOR2_X1)                               0.0682     2.0427 r
+  DP_i/U84/ZN (AND2_X1)                                 0.0513     2.0940 r
+  DP_i/U157/ZN (AND3_X1)                                0.0518     2.1458 r
+  DP_i/U155/ZN (AOI22_X1)                               0.0347     2.1805 f
+  DP_i/U755/ZN (AOI21_X1)                               0.0627     2.2432 r
+  DP_i/U759/ZN (OAI221_X1)                              0.0499     2.2931 f
+  DP_i/U760/ZN (OAI22_X1)                               0.0719     2.3650 r
+  DP_i/U338/ZN (NAND2_X1)                               0.0348     2.3998 f
+  DP_i/U336/ZN (NAND4_X1)                               0.0343     2.4341 r
+  DP_i/U208/ZN (NAND2_X1)                               0.0279     2.4620 f
+  DP_i/execute_i_zero_alu_bit_Y_reg/D (DFF_X1)          0.0104     2.4724 f
+  data arrival time                                                2.4724
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/execute_i_zero_alu_bit_Y_reg/CK (DFF_X1)         0.0000     2.5000 r
+  library setup time                                   -0.0246     2.4754
+  data required time                                               2.4754
+  --------------------------------------------------------------------------
+  data required time                                               2.4754
+  data arrival time                                               -2.4724
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0029
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_2_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3144/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3145/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_2_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_2_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_6_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3124/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3125/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_6_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_6_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_8_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3114/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3115/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_8_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_8_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_5_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3129/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3130/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_5_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_5_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_7_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3119/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3120/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_7_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_7_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_4_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3134/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3135/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_4_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_4_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_3_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3139/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3140/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_3_/D (DFF_X1)                 0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_3_/CK (DFF_X1)                0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+  Startpoint: DP_i/fetch_i_IR_out_reg_29_
+              (rising edge-triggered flip-flop clocked by CLK)
+  Endpoint: DP_i/fetch_i_pc_i_Y_reg_10_
+            (rising edge-triggered flip-flop clocked by CLK)
+  Path Group: REG2REG
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  DLX                5K_hvratio_1_4        NangateOpenCellLibrary
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock CLK (rise edge)                                 0.0000     0.0000
+  clock network delay (ideal)                           0.0500     0.0500
+  DP_i/fetch_i_IR_out_reg_29_/CK (DFF_X1)               0.0000     0.0500 r
+  DP_i/fetch_i_IR_out_reg_29_/QN (DFF_X1)               0.0877     0.1377 f
+  DP_i/opcode_3__BAR (DataPath)                         0.0000     0.1377 f
+  U814/ZN (INV_X1)                                      0.0373     0.1750 r
+  U815/ZN (NOR2_X1)                                     0.0283     0.2033 f
+  U816/ZN (NAND2_X1)                                    0.0412     0.2445 r
+  U818/ZN (NOR2_X1)                                     0.0378     0.2823 f
+  DP_i/RF2 (DataPath)                                   0.0000     0.2823 f
+  DP_i/U378/ZN (OR2_X1)                                 0.0778     0.3601 f
+  DP_i/U1152/ZN (NOR2_X1)                               0.0686     0.4287 r
+  DP_i/U1154/ZN (AOI21_X1)                              0.0399     0.4686 f
+  DP_i/U1155/ZN (AOI21_X1)                              0.0735     0.5421 r
+  DP_i/U1161/ZN (NAND2_X1)                              0.0316     0.5738 f
+  DP_i/U350/ZN (AND2_X1)                                0.0471     0.6209 f
+  DP_i/U384/ZN (XNOR2_X1)                               0.0648     0.6857 f
+  DP_i/U1164/ZN (NAND2_X1)                              0.0382     0.7239 r
+  DP_i/U1165/ZN (NAND2_X1)                              0.0325     0.7564 f
+  DP_i/U1264/CO (FA_X1)                                 0.0992     0.8556 f
+  DP_i/U346/ZN (NAND2_X1)                               0.0528     0.9084 r
+  DP_i/U1174/ZN (NOR2_X1)                               0.0332     0.9416 f
+  DP_i/U1175/ZN (OAI22_X1)                              0.0643     1.0059 r
+  DP_i/U1176/ZN (OAI21_X1)                              0.0610     1.0669 f
+  DP_i/U331/ZN (OAI21_X1)                               0.0595     1.1264 r
+  DP_i/U1183/ZN (NAND2_X1)                              0.0317     1.1581 f
+  DP_i/U1189/ZN (AND2_X1)                               0.0461     1.2041 f
+  DP_i/U1194/ZN (AND2_X1)                               0.0451     1.2493 f
+  DP_i/U1199/ZN (XNOR2_X1)                              0.0617     1.3110 f
+  DP_i/U1201/ZN (NAND2_X1)                              0.0311     1.3421 r
+  DP_i/U27/ZN (AND2_X1)                                 0.0489     1.3911 r
+  DP_i/U333/ZN (NAND2_X1)                               0.0418     1.4329 f
+  DP_i/U26/ZN (OR2_X1)                                  0.0682     1.5011 f
+  DP_i/U163/ZN (NAND2_X1)                               0.0344     1.5355 r
+  DP_i/U1261/S (FA_X1)                                  0.1219     1.6575 f
+  DP_i/U1262/ZN (AOI22_X1)                              0.0534     1.7109 r
+  DP_i/U1263/ZN (OAI221_X1)                             0.0510     1.7618 f
+  DP_i/U1268/ZN (AOI211_X1)                             0.0820     1.8438 r
+  DP_i/U357/ZN (AND4_X1)                                0.0695     1.9133 r
+  DP_i/U1288/ZN (AND4_X1)                               0.0622     1.9755 r
+  DP_i/U1289/ZN (AND4_X1)                               0.0681     2.0436 r
+  DP_i/U344/ZN (NAND4_X1)                               0.0458     2.0894 f
+  DP_i/U345/ZN (AND3_X2)                                0.0583     2.1477 f
+  DP_i/U3300/ZN (OR3_X1)                                0.0886     2.2363 f
+  DP_i/U62/ZN (INV_X4)                                  0.1014     2.3377 r
+  DP_i/U3104/ZN (AOI22_X1)                              0.0694     2.4071 f
+  DP_i/U3105/ZN (OAI211_X1)                             0.0452     2.4523 r
+  DP_i/fetch_i_pc_i_Y_reg_10_/D (DFF_X1)                0.0110     2.4633 r
+  data arrival time                                                2.4633
+
+  clock CLK (rise edge)                                 2.5000     2.5000
+  clock network delay (ideal)                           0.0500     2.5500
+  clock uncertainty                                    -0.0500     2.5000
+  DP_i/fetch_i_pc_i_Y_reg_10_/CK (DFF_X1)               0.0000     2.5000 r
+  library setup time                                   -0.0318     2.4682
+  data required time                                               2.4682
+  --------------------------------------------------------------------------
+  data required time                                               2.4682
+  data arrival time                                               -2.4633
+  --------------------------------------------------------------------------
+  slack (MET)                                                      0.0048
+
+
+1
