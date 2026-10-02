@@ -10,7 +10,7 @@ path is hardwired. Its main extensions beyond a basic pipeline are:
 - forwarding into both execute and decode-stage branch logic;
 - a pipelined Booth/Dadda multiplier with scoreboard tracking;
 - byte, half-word and word memory operations;
-- special registers and precise exception state;
+- special registers and exception state;
 - optional handshaked instruction and data memory models.
 
 The complete structural view is shown in the
@@ -19,13 +19,13 @@ sheets in [`schematics/`](../schematics/).
 
 ## Pipeline organization
 
-| Stage | Primary work | Pipeline boundary |
-|---|---|---|
-| IF | PC selection, instruction request, BTB lookup and prediction | IF/ID |
-| ID | instruction decode, register reads, immediate generation, branch resolution and early exception detection | ID/EX |
-| EX | operand forwarding, ALU/compare/shift operations, multiplication and effective-address generation | EX/MEM |
-| MEM | data-memory access, alignment checking, load/store formatting and exception commit | MEM/WB |
-| WB | ALU/load/link selection and architectural register update | register file |
+| Stage | Main work |
+|---|---|
+| IF | PC selection, instruction request, BTB lookup and IF/ID state |
+| ID | Decode, register reads, immediates, branch resolution and ID/EX state |
+| EX | Forwarding, ALU, multiplication, address calculation and EX/MEM state |
+| MEM | Data access, load/store formatting, exceptions and MEM/WB state |
+| WB | Register-file write signals; sign/zero metadata in V3–V7 |
 
 The pipeline registers carry both data and decoded control fields. Flush, stall
 and write-enable decisions are produced by the control path and applied at the
@@ -38,10 +38,10 @@ correction and an exception or return address. The instruction interface exposes
 an address, returned instruction word, issue signal and ready handshake.
 
 The branch target buffer contains 16 direct-mapped entries indexed by PC bits.
-Each entry stores a tag, target, validity state, branch type and a 2-bit direction
-counter. Conditional branches and register-indirect jumps are resolved in
+Each entry stores a tag, target, valid bit and a 2-bit direction counter.
+Conditional branches and register-indirect jumps are resolved in
 decode, allowing incorrect predictions to be corrected before the instruction
-reaches execute.
+reaches execute. Therefore, only one clk is lost per miss prediction.
 
 The fetch structure and BTB are shown in
 [`03_fetch.svg`](../schematics/03_fetch.svg).
@@ -54,8 +54,8 @@ control bundle passed into ID/EX.
 
 Later revisions store sign and zero metadata beside each integer register. The
 metadata is generated from the actual write-back value and participates in
-same-cycle write/read bypassing. This removes a 32-bit sign/zero reduction from
-the decode-to-PC timing path.
+same-cycle write/read bypassing. It avoids recalculating the zero condition
+from the 32-bit register value during branch resolution.
 
 Decode details, branch correction and exception inputs are shown in
 [`05_decode.svg`](../schematics/05_decode.svg).
@@ -81,9 +81,10 @@ The control pipeline, dependency checks and forwarding requests are shown in
 
 ## Execute and multiplication
 
-The execute stage contains the arithmetic/logic unit, comparison logic, shifter,
-effective-address adder and multiplier operand routing. Forwarding multiplexers
-select the newest available value before the functional units.
+The execute stage contains a shared compare/add unit, logic unit, shifter and
+multiplier operand routing. The add path also calculates memory addresses.
+Forwarding multiplexers select the newest available value before the
+functional units.
 
 Multiplication uses Booth recoding and a Dadda reduction tree. The multiplier is
 internally pipelined, so independent instructions can continue through the main
@@ -102,12 +103,13 @@ The data interface is byte addressed and supports:
 | `lb`, `lbu`, `lh`, `lhu`, `lw` | `sb`, `sh`, `sw` |
 
 Byte and half-word loads select the addressed lane and apply sign or zero
-extension. Sub-word stores preserve the unaffected bytes through
-read-modify-write formatting. Word and half-word alignment is checked before an
+extension. The CPU supplies a byte address, store size and the low byte or
+half-word of the source value; the memory models merge sub-word stores with
+the unaffected bytes. Word and half-word alignment is checked before an
 architectural update is allowed.
 
-The interface can operate with a direct memory model or a handshaked slow-memory
-model. Instruction and data transactions are independent.
+The verification environment provides direct and handshaked memory models for
+the separate instruction and data interfaces.
 
 Memory formatting, alignment and MEM/WB state are shown in
 [`07_memory.svg`](../schematics/07_memory.svg).

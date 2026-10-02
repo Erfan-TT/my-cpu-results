@@ -1,7 +1,7 @@
 # Full synthesis comparison
 
-This section contains the complete synthesis analysis of V0 through V7 and the
-two synthesis scripts.
+This section compares V0 through V7 across the synthesis sweep. Except for
+the script-comparison section, version rankings and plots use the tuned script.
 
 ## Experiment inventory
 
@@ -21,19 +21,20 @@ source report in [`../data/synthesis_runs.csv`](../data/synthesis_runs.csv).
 
 ## Version overview
 
-The median, leader counts and pairwise comparisons summarize the constraint
-sweep from complementary views. The power column uses the common 500 MHz point.
+The period and area columns summarize the 13-point tight band. Power uses the
+common 500 MHz point; first closure and rank ranges are in
+[`../data/version_summary.csv`](../data/version_summary.csv).
 
-| Version | First sampled closure | Median achieved period | Best observed period | Median area | First-place count | Rank range | Power at 500 MHz: multiplier / mixed |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| V0 | 2.0 ns | 1.7730 ns | 1.6910 ns | 26,826 µm² | 0/13 | 8–8 | **4.065** / 4.394 mW |
-| V1 | 1.7 ns | 1.6178 ns | 1.4997 ns | 26,662 µm² | 1/13 | 1–7 | 4.082 / **4.388** mW |
-| V2 | 1.6 ns | 1.5997 ns | 1.4723 ns | 26,965 µm² | 3/13 | 1–7 | 4.083 / 4.403 mW |
-| V3 | 1.7 ns | 1.5846 ns | 1.4154 ns | 26,680 µm² | 1/13 | 1–6 | 4.117 / 4.444 mW |
-| V4 | 1.7 ns | 1.5726 ns | 1.4456 ns | 26,899 µm² | 1/13 | 1–7 | 4.399 / 4.696 mW |
-| V5 | 1.7 ns | 1.5787 ns | 1.4569 ns | 26,797 µm² | 2/13 | 1–7 | 4.395 / 4.705 mW |
-| V6 | 1.6 ns | 1.5717 ns | **1.4096 ns** | 26,722 µm² | **4/13** | 1–6 | 4.374 / 4.684 mW |
-| V7 | 1.7 ns | 1.5648 ns | 1.5024 ns | 26,724 µm² | 1/13 | 1–6 | 4.084 / 4.411 mW |
+| Version | Median period | Best period | Median area | Leads / 13 | Power at 500 MHz: multiplier / mixed |
+|---|---:|---:|---:|---:|---:|
+| V0 | 1.7730 ns | 1.6910 ns | 26,826 µm² | 0 | **4.065** / 4.394 mW |
+| V1 | 1.6178 ns | 1.4997 ns | 26,662 µm² | 1 | 4.082 / **4.388** mW |
+| V2 | 1.5997 ns | 1.4723 ns | 26,965 µm² | 3 | 4.083 / 4.403 mW |
+| V3 | 1.5846 ns | 1.4154 ns | 26,680 µm² | 1 | 4.117 / 4.444 mW |
+| V4 | 1.5726 ns | 1.4456 ns | 26,899 µm² | 1 | 4.399 / 4.696 mW |
+| V5 | 1.5787 ns | 1.4569 ns | 26,797 µm² | 2 | 4.395 / 4.705 mW |
+| V6 | 1.5717 ns | **1.4096 ns** | 26,722 µm² | **4** | 4.374 / 4.684 mW |
+| V7 | 1.5648 ns | 1.5024 ns | 26,724 µm² | 1 | 4.084 / 4.411 mW |
 
 ![Achieved period at every constraint](figures/01_achieved_period_by_constraint.svg)
 
@@ -87,36 +88,39 @@ matched constraints, while the ordering among V1–V7 changes across the sweep.
 
 The speed delta is `later − earlier`.
 
-| Step | Faster / slower constraints | Median speed delta | Speed-delta range | Median area delta | Power delta at 500 MHz: multiplier / mixed |
-|---|---:|---:|---:|---:|---:|
-| V0→V1 | 13 / 0 | **−149.3 ps** | −252.6 to −22.6 ps | −173 µm² | +0.017 / −0.007 mW |
-| V1→V2 | 9 / 4 | −21.0 ps | −117.7 to +100.0 ps | +310 µm² | +0.001 / +0.015 mW |
-| V2→V3 | 9 / 4 | −23.7 ps | −184.3 to +38.8 ps | −302 µm² | +0.033 / +0.041 mW |
-| V3→V4 | 7 / 6 | −2.0 ps | −44.3 to +71.2 ps | +148 µm² | **+0.282 / +0.252 mW** |
-| V4→V5 | 8 / 5 | −12.5 ps | −89.0 to +101.8 ps | +35 µm² | −0.004 / +0.010 mW |
-| V5→V6 | 9 / 4 | −13.3 ps | −134.0 to +64.5 ps | −122 µm² | −0.021 / −0.021 mW |
-| V6→V7 | 2 / 11 | **+16.0 ps** | −69.9 to +95.9 ps | −21 µm² | **−0.291 / −0.273 mW** |
+| Step | Faster / slower | Median period delta | Delta range | Median area delta |
+|---|---:|---:|---:|---:|
+| V0→V1 | 13 / 0 | **−149.3 ps** | −252.6 to −22.6 ps | −173 µm² |
+| V1→V2 | 9 / 4 | −21.0 ps | −117.7 to +100.0 ps | +310 µm² |
+| V2→V3 | 9 / 4 | −23.7 ps | −184.3 to +38.8 ps | −302 µm² |
+| V3→V4 | 7 / 6 | −2.0 ps | −44.3 to +71.2 ps | +148 µm² |
+| V4→V5 | 8 / 5 | −12.5 ps | −89.0 to +101.8 ps | +35 µm² |
+| V5→V6 | 9 / 4 | −13.3 ps | −134.0 to +64.5 ps | −122 µm² |
+| V6→V7 | 2 / 11 | **+16.0 ps** | −69.9 to +95.9 ps | −21 µm² |
+
+Equal-frequency power deltas are in
+[`../data/fixed_frequency_power_deltas.csv`](../data/fixed_frequency_power_deltas.csv).
 
 ### Interpretation by revision
 
-- **V1 is the clearest latency improvement.** Its parallel condition evaluation
-  removes the wide zero-detection logic from behind the forwarding mux. It is
-  faster than V0 at all 13 matched points, lowers median area and has nearly
-  unchanged power at 500 MHz.
-- **V2 demonstrates a trade-off.** Parallel target comparisons sometimes win
-  timing and lead three constraints, but duplicate logic raises median area and
-  power relative to V1.
-- **V3 removes work from the register-file read path.** Its stored sign/zero
-  metadata lowers median area, while its speed and power effects remain
-  constraint-dependent.
-- **V4 targets the wrong timing group for frequency.** The registered BTB update
-  was motivated by a `CLK`-group path, while REG2REG remained binding. Its speed
-  difference changes sign across the band, while power at 500 MHz increases by
-  0.282 mW and 0.252 mW for the two workloads.
-- **V5 and V6 are small perturbations on top of V4.** Their speed effects reverse
+- **V1 is the clearest measured latency improvement.** Its branch decision
+  evaluates forwarded and register-value conditions in parallel. V1 also has
+  other RTL edits, so the gain cannot be assigned to this one change. The
+  snapshot is faster than V0 at all 13 matched points, has lower median area
+  and has nearly unchanged power at 500 MHz.
+- **V2 demonstrates a trade-off.** Parallel target comparisons accompany wins
+  at three constraints; its median area and reported power are higher than V1.
+- **V3 removes work from the register-file read path.** It stores sign/zero
+  metadata and has lower median area than V2; speed differences reverse with
+  constraint, while at 500 MHz, V3 power is higher than V2 on both workloads.
+- **V4 registers the BTB update request.** Its speed difference changes sign
+  across the band, while power at 500 MHz increases by 0.282 mW and 0.252 mW
+  for the two workloads. The same revision also removes illegal-detector
+  guards.
+- **V5 and V6 have small median shifts from their predecessors.** Their speed effects reverse
   with constraint. V6 nevertheless produces the fastest single run and leads
   more constraints than any other snapshot.
-- **V7 is a power-oriented ablation.** Removing the V4/V5 structures lowers
+- **V7 combines a rollback with retained changes.** Removing the V4/V5 structures lowers
   power relative to V6 by 0.291 mW and 0.273 mW at 500 MHz. It is slower than V6
   at 11 of 13 points.
 
@@ -137,7 +141,12 @@ complete matched-speed table is
 ## Equal-frequency power comparison
 
 All versions close timing at the 2.0 ns target. Their power runs use the same
-2.0 ns SAIF simulation period and report 100% annotation coverage.
+2.0 ns activity-simulation period and report 100% annotation coverage. The
+archived gate-regression status is `pass` for all eight versions at all 21
+synthesis points, with zero reported failures; see the
+[per-test verdicts](../evidence/power/methodology/README.md).
+The V0–V1 differences at this point are 0.017 mW for the multiplier and 0.007
+mW for the mixed program.
 
 | Version | Multiplier workload | Mixed workload |
 |---|---:|---:|

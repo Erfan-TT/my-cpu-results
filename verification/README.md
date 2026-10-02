@@ -32,11 +32,10 @@ Each directed program follows the same flow:
 1. Assemble the program and create instruction/data initialization images.
 2. Execute it with the software reference model.
 3. Simulate the RTL with the same program and memory configuration.
-4. Compare the complete architectural result against the reference output.
+4. Compare the final data-memory image against the reference output.
 
-Tests are organized so each result is written to a known location. This makes a
-failure traceable to an instruction case rather than only to a program-level
-pass/fail status.
+The comparison checks stored words. It does not by itself measure cycle counts,
+stall events or branch-predictor accuracy. Therefore, testbench modification for counting total cycles, stalls, pipeline flushes, branch predictions and etc is required and is planned for the future work.
 
 ## Covered behavior
 
@@ -46,13 +45,13 @@ The suite exercises:
 - immediate extension and architectural-zero behavior;
 - pipelined multiplication, dependencies and overlapping execution;
 - forwarding, load-use stalls, store-data forwarding and scoreboarding;
-- conditional branches, jumps, links, prediction and correction;
+- conditional branches, jumps, links and visible redirect outcomes;
 - byte, half-word and word loads/stores with alignment handling;
 - traps, illegal instructions, special registers and exception return;
 - mixed integration programs and switching-activity workloads.
 
-[`CHECKLIST.md`](CHECKLIST.md) maps each implemented behavior to its directed
-test and distinguishes architectural checks from cycle-observable properties.
+[`CHECKLIST.md`](CHECKLIST.md) maps directed test intentions and distinguishes
+stored-result checks from properties that still require cycle-level evidence.
 
 ## Checking the archived results
 
@@ -65,6 +64,10 @@ python scripts/check_verification.py
 The checker reads the declared regression expectations and compares the archived
 RTL outputs with their corresponding reference outputs. It does not invoke an
 HDL simulator.
+
+The separate post-synthesis gate-level regression results for V0–V7 are under
+[`../evidence/power/`](../evidence/power/), with per-test verdicts and limits
+described in the [power evidence notes](../evidence/power/methodology/README.md).
 
 ## Archived simulation flow
 

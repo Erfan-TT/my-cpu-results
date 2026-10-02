@@ -1,13 +1,14 @@
 # DLX functional verification checklist
 
-Every row is something the RTL actually implements, and the test that drives
-it. A row with no test is a gap, not an omission.
+The rows map test intentions to assembly programs. A named program means its
+archived final-memory image can be checked against the reference; it does not
+prove every internal event in the row occurred.
 
-The check itself is always the same: the program writes its results into data
-memory, `dlxsim.py` computes what they should be, and `--compare` diffs the two
-images word for word. So a row is only really covered if its outcome reaches
-memory — anything that only changes *timing* (a stall, a prediction) is marked
-**cycles** and has to be read off the waveform instead.
+The original flow assembled each program, generated a reference memory image
+with `dlxsim.py`, and compared it with the RTL final-memory image. The public
+checker repeats the archived word-for-word comparison. Internal timing events
+such as stalls and predictions need counters, assertions or waveforms; they
+are marked **cycles** below.
 
 ---
 
@@ -33,12 +34,12 @@ memory — anything that only changes *timing* (a stall, a prediction) is marked
 |---|---|---|
 | B1 | Booth/Dadda product: sign combinations, 0, ±1, INT_MIN, 2^15 and 2^16 squared, alternating-bit operands | 08_multiplier |
 | B2 | independent instructions issued underneath a multiply; out-of-order writeback through the shadowed `rd` | 09_mult_parallel |
-| B3 | dependent consumer at distances 1 / 2 / 3 — only distance 1 may stall | 09_mult_parallel |
+| B3 | dependent consumers at distances 1 / 2 / 3; exact stalls need cycle evidence | 09_mult_parallel; **cycles** |
 | B4 | three back-to-back multiplies (structural hazard on the shared writeback, `shift_bit`) | 09_mult_parallel |
 | B5 | a product as a branch condition resolved in ID | 09_mult_parallel |
 | B6 | a multiply still in flight across a `jal` / `jr` boundary | 09_mult_parallel |
 | B7 | a product used as a store address and as store data | 09_mult_parallel |
-| B8 | WAW: an ALU write landing on a register a multiply still owns | 09_mult_parallel (see README) |
+| B8 | WAW: an ALU write landing on a register a multiply still owns | 09_mult_parallel |
 
 ## C. Hazards and forwarding
 
@@ -47,7 +48,7 @@ memory — anything that only changes *timing* (a stall, a prediction) is marked
 | C1 | EX→EX, `rs1` and `rs2` | 06_forwarding |
 | C2 | MEM→EX, `rs1` and `rs2` | 06_forwarding |
 | C3 | register-file read-during-write bypass (distance 3) | 06_forwarding |
-| C4 | load-use at distance 1 — the one case that stalls | 07_load_use |
+| C4 | dependent load use at distance 1; exact stall count needs cycle evidence | 07_load_use; **cycles** |
 | C5 | load → store data (`fw_mem_mem`) | 07_load_use |
 | C6 | EX→ID forwarding of the branch condition flags | 10_branches (words 18–20) |
 | C7 | forwarding cancelled for `link_bit` (jal/jalr) and `SP_read` (movs2i) | 06_forwarding |
@@ -66,7 +67,7 @@ memory — anything that only changes *timing* (a stall, a prediction) is marked
 | D2 | `j`, `jal`, `jr`, `jalr`, and the link value | 10_branches |
 | D3 | BTB cold miss on a branch's first execution | **cycles** — 11_btb_predictor |
 | D4 | BTB hit once the row is allocated | **cycles** — 11_btb_predictor |
-| D5 | a loop re-entered, so its branch starts already saturated | 11_btb_predictor |
+| D5 | loop re-entry; predictor state needs cycle evidence | 11_btb_predictor; **cycles** |
 | D6 | mispredict-taken, repaired | 11_btb_predictor |
 | D7 | mispredict-not-taken, repaired | 11_btb_predictor |
 | D8 | two branches 64 bytes apart aliasing to the same BTB row (16 rows, index `pc[5:2]`) | 11_btb_predictor |
@@ -117,20 +118,19 @@ memory — anything that only changes *timing* (a stall, a prediction) is marked
 |---|---|---|
 | G1 | reset, first fetch from address 0 | every test |
 | G2 | mixed program, differential against the golden model | 15_smoke_crosscheck, 17_given_branch_loop, 18_given_mult_shift |
-| G5 | every test's result actually reaches memory — an all-zero golden image means the compare proves nothing | audited 2026-09-25; 18_given_mult_shift and 05_r0_writeback fixed |
-| G3 | redirect arriving during an I-cache refill | 16_jal_return and 11_btb_predictor, mode `cf` — **known failure**, and broader than first thought: with `USE_ICACHE=true` most programs containing a taken branch or jump diverge, not just `jal` |
+| G5 | stored results are compared as complete memory images | `scripts/check_verification.py` |
+| G3 | I-cache-mode branch/jump redirects | 16_jal_return and 11_btb_predictor, mode `cf` — archived expected mismatches |
 | G4 | long workload for switching activity / VCD | 20_power_bench |
 
 ---
 
 ## Gaps, in one place
 
-- **D12**, **F11** and the D3/D4 hit-rate rows are timing, not architectural
-  state, so nothing a memory dump can check. They need either waveform
-  inspection or counters added to the testbench.
+- **D3**, **D4**, **D12** and **F12** concern internal predictor or pipeline
+  events. Their exact behavior needs counters, assertions or waveforms.
 - **F10** (misaligned target on a *not-taken* branch) and **F11** (nested
   exception) have no program yet.
 - **F13**: nothing enforces or tests the 16-byte VBR alignment the hardware
   requires.
-- **G3** is a known RTL bug, recorded as an expected failure rather than
-  hidden — see `README.md`.
+- **G3** has two archived expected mismatches in `cf` mode; see
+  [`../data/verification_results.csv`](../data/verification_results.csv).

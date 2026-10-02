@@ -12,6 +12,9 @@ script arms:
 Each version/script combination contains the same 21 requested clock
 constraints. The matched comparison band is 1.00–1.60 ns in 0.05 ns steps;
 the relaxed points are retained for timing closure and Pareto plots.
+The [revision record](revisions.md) uses the previous version's 1.0 ns
+`new`-script report for its path startpoint and endpoint. Version rankings
+and PPA plots also use `new`; the script comparison pairs `new` with `old`.
 
 ## Extracted metrics
 
@@ -25,10 +28,14 @@ achieved period = T - minimum reported group slack
 Cell area is read from `report_qor`. The extraction script validates both values
 against the archived `results.csv` files.
 
-Workload power comes from SAIF-annotated post-synthesis analysis. Each total-
-power value is paired with `sim_period_ns`, the clock period used for its
-activity simulation. The run-level CSV also retains the derived
-`total_mW × sim_period_ns` energy-per-cycle columns.
+Workload power comes from switching-activity-annotated, pre-layout Design
+Compiler analysis. Each total-power value is paired with `sim_period_ns`, the
+clock period used for its activity simulation. The run-level CSV also retains
+the derived `total_mW × sim_period_ns` energy-per-cycle columns. These are
+estimates for two programs, not post-layout or measured silicon power. At the
+common 2.0 ns point, the archived tables show gate-regression `pass` for
+all eight versions; see the
+[power evidence notes](../evidence/power/methodology/README.md).
 
 ## Comparisons
 
