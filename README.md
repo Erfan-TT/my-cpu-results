@@ -1,19 +1,23 @@
-# DLX 5-stage pipelined CPU
+# 5-Stage Pipelined DLX Processor
 
-This repository documents a 32-bit DLX implementation with branch prediction,
-forwarding and hazard control, a pipelined Booth/Dadda multiplier, byte, half-word
-and word memory operations, and exception handling. It includes architecture
-schematics, synthesis and power evidence, analysis scripts, and verification
-artifacts for eight RTL snapshots, V0–V7.
+An evidence-backed design study of a 32-bit VHDL processor across eight RTL
+revisions (V0–V7). The repository includes architecture schematics, 336
+synthesis runs, switching-activity power estimates, gate-level regression
+results, and scripts to reproduce the published analysis.
+
+The processor has branch prediction, forwarding and hazard control, a
+pipelined Booth/Dadda multiplier, byte/half-word/word memory operations, and
+exception handling.
 
 The complete RTL is not published here because of university obligations.
 This public repository therefore focuses on the
 architecture, synthesis and power results, verification evidence, and
 reproducible analysis. The RTL can be shared privately where permitted.
 
-The synthesis study sweeps clock constraints across V0–V7 and reports timing
-and area for both synthesis scripts. Workload-annotated power is available for
-the tuned-script points.
+Start with the [architecture](#processor-architecture),
+[revision history](#design-space-exploration), [results](#synthesis-analysis),
+or [verification](#verification). Timing and area cover both synthesis scripts;
+workload-annotated power covers the tuned-script points.
 
 ## Processor architecture
 
