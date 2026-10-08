@@ -103,24 +103,25 @@ are marked **cycles** below.
 | F3 | `trap N` → cause 1, `TVAL` = zero-extended 26-bit field | 13_exceptions_min, 14_exceptions_full |
 | F4 | taken jump to a misaligned target → cause 2, `TVAL` = target | 13_exceptions_min, 14_exceptions_full |
 | F5 | misaligned `lw`/`sw`, and `lh`/`lhu` on an odd address → cause 3, `TVAL` = address | 13_exceptions_min, 14_exceptions_full |
-| F6 | `VBR + (cause << 2)` dispatch | 13_exceptions_min, 14_exceptions_full |
+| F6 | dispatch to the vector-table entry for each cause (`VBR + (cause << 2)` for a 16-byte-aligned VBR; see F13) | 13_exceptions_min, 14_exceptions_full |
 | F7 | `IAR` holds the faulting PC; `rfe` returns to it | 13_exceptions_min, 14_exceptions_full |
 | F8 | `STATUS` IE/EXL/PIE stacked on entry, restored by `rfe` | 14_exceptions_full |
 | F9 | an odd-addressed `sb` does not fault; a misaligned `sh` raises cause 3 | 21_store_subword |
-| F10 | not-taken branch with a misaligned target: no exception, BTB row invalidated | **not covered** |
-| F13 | **VBR must be 16-byte aligned.** `branch_correction` builds the handler address by *substituting* CAUSE into PC bits 3:2 (`VBR_in(31 downto 4) & CAUSE_mem`), not by adding it. Nothing checks this, and a misaligned VBR silently dispatches to the wrong handler | every exception test aligns its table; nothing tests the violation |
+| F10 | not-taken branch with a misaligned target: no exception, BTB row invalidated (V0–V3, V7; V4–V6 remove the invalidation, see 23_misaligned_jump_repeat) | **not covered** |
 | F11 | an exception raised inside a handler | **not covered** |
 | F12 | scoreboard flushed on commit (`special_pc_sel`) | **cycles** — not covered |
+| F13 | **VBR must be 16-byte aligned (V1 onward).** `branch_correction` builds the handler address by *substituting* CAUSE into PC bits 3:2 (`VBR_in(31 downto 4) & CAUSE_mem`), not by adding it. Nothing checks this, and a misaligned VBR silently dispatches to the wrong handler | every exception test aligns its table; nothing tests the violation |
 
 ## G. Integration
 
 | # | What | Test |
 |---|---|---|
 | G1 | reset, first fetch from address 0 | every test |
-| G2 | mixed program, differential against the golden model | 15_smoke_crosscheck, 17_given_branch_loop, 18_given_mult_shift |
-| G5 | stored results are compared as complete memory images | `scripts/check_verification.py` |
+| G2 | mixed program, differential against the golden model | 15_smoke_crosscheck, 17_given_branch_loop, 18_given_mult_shift, 19_given_all_general |
 | G3 | I-cache-mode branch/jump redirects | 16_jal_return and 11_btb_predictor, mode `cf` — archived expected mismatches |
-| G4 | long workload for switching activity / VCD | 20_power_bench |
+| G4 | long workload for switching activity | 20_power_bench, 24_mac_loops (multiplier-heavy) |
+| G5 | stored results are compared as complete memory images | `scripts/check_verification.py` |
+| G6 | cycles from reset to the final self-loop, per test and version | `data/cycle_counts.csv` |
 
 ---
 

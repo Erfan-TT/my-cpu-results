@@ -18,6 +18,7 @@ EVIDENCE = ROOT / "evidence"
 DATA = ROOT / "data"
 VERSIONS = [f"V{i}" for i in range(8)]
 ARMS = ("new", "old")
+WORKLOADS = ("08_multiplier", "20_power_bench", "24_mac_loops")
 
 
 def group_slacks(path: Path) -> dict[str, float]:
@@ -151,7 +152,7 @@ def extract() -> list[dict[str, object]]:
                     p = power[tag]
                     sim_period = float(p["sim_period_ns"])
                     row["sim_period_ns"] = sim_period
-                    for workload in ("08_multiplier", "20_power_bench"):
+                    for workload in WORKLOADS:
                         total_key = f"total_mW_{workload}"
                         coverage_key = f"saif_cov_{workload}"
                         if p.get(total_key):
@@ -161,6 +162,13 @@ def extract() -> list[dict[str, object]]:
                             # Power was evaluated at sim_period_ns, so this is the
                             # matching period for converting mW to pJ/cycle.
                             row[f"energy_pJ_{workload}"] = total * sim_period
+                            # The SAIF window runs from the end of reset to the
+                            # program's final self-loop, so power x window is
+                            # the energy of one run of the program (pJ -> nJ).
+                            window = p.get(f"window_cycles_{workload}")
+                            if window:
+                                row[f"window_cycles_{workload}"] = int(window)
+                                row[f"energy_nJ_{workload}"] = total * sim_period * int(window) / 1000
                 rows.append(row)
 
     if issues:

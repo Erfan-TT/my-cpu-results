@@ -76,8 +76,8 @@ set TESTS {
     {dir 18_given_mult_shift words 512 runtime {10 us} modes {ff}
      note {provided example: shift loop with bnez}}
 
-    {dir 19_given_all_general words 512 runtime {80 us} modes {ff} skip 1
-     note {provided example: uses sb, which this CPU does not decode}}
+    {dir 19_given_all_general words 512 runtime {10 us} modes {ff}
+     note {provided example, made runnable: aligned loads, stores, final self-loop}}
 
     {dir 20_power_bench      words 512 runtime {300 us} modes {ff}
      note {switching-activity workload; run this one with a VCD}}
@@ -87,4 +87,10 @@ set TESTS {
 
     {dir 22_branch_operand_hazard words 512 runtime {20 us} modes {ff}
      note {jr/jalr target and branch condition at every operand distance}}
+
+    {dir 23_misaligned_jump_repeat words 512 runtime {20 us} modes {ff}
+     note {a misaligned jr executed three times; the same exception every time}}
+
+    {dir 24_mac_loops        words 512 runtime {120 us} modes {ff}
+     note {multiply-accumulate loops; a multiplier-heavy SAIF workload}}
 }

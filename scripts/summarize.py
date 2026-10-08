@@ -12,6 +12,7 @@ DATA = ROOT / "data"
 VERSIONS = [f"V{i}" for i in range(8)]
 TIGHT = [round(1.0 + 0.05 * i, 2) for i in range(13)]
 STEPS = list(zip(VERSIONS[:-1], VERSIONS[1:]))
+WORKLOADS = ("08_multiplier", "20_power_bench", "24_mac_loops")
 
 
 def number(value: str) -> float | None:
@@ -31,6 +32,11 @@ def index(rows: list[dict[str, str]]) -> dict[tuple[str, str, float], dict[str, 
         (row["version"], row["script"], round(float(row["constraint_ns"]), 2)): row
         for row in rows
     }
+
+
+def rounded(value: object, digits: int = 4) -> object:
+    x = number(value)  # type: ignore[arg-type]
+    return "" if x is None else round(x, digits)
 
 
 def write(name: str, header: list[str], rows: list[list[object]]) -> None:
@@ -83,54 +89,34 @@ def main() -> None:
         achieved = [float(row["achieved_ns"]) for row in tight_rows]
         area = [float(row["area_um2"]) for row in tight_rows]
         version_ranks = [ranks[(target, version)] for target in TIGHT]
-        all_rows = sorted(
-            (row for row in rows if row["version"] == version and row["script"] == "new"),
-            key=lambda row: float(row["constraint_ns"]),
-        )
-        closure = next((row for row in all_rows if row["met"] == "1"), None)
-        v0 = [float(by[("V0", "new", target)]["achieved_ns"]) for target in TIGHT]
+        # The fastest netlist is described by its own area and power, so the
+        # row never mixes metrics from different netlists.
+        fastest = min(tight_rows, key=lambda row: float(row["achieved_ns"]))
+        v0 =[float(by[("V0", "new", target)]["achieved_ns"]) for target in TIGHT]
         faster_v0 = sum(a < b for a, b in zip(achieved, v0)) if version != "V0" else ""
         slower_v0 = sum(a > b for a, b in zip(achieved, v0)) if version != "V0" else ""
-        energy_mul = [number(row.get("energy_pJ_08_multiplier", "")) for row in tight_rows]
-        energy_bench = [number(row.get("energy_pJ_20_power_bench", "")) for row in tight_rows]
-        power_mul = [number(row.get("total_mW_08_multiplier", "")) for row in tight_rows]
-        power_bench = [number(row.get("total_mW_20_power_bench", "")) for row in tight_rows]
-        energy_mul = [x for x in energy_mul if x is not None]
-        energy_bench = [x for x in energy_bench if x is not None]
-        power_mul = [x for x in power_mul if x is not None]
-        power_bench = [x for x in power_bench if x is not None]
         fixed_500 = by[(version, "new", 2.0)]
-        summary_rows.append([
-            version,
-            closure["constraint_ns"] if closure else "",
-            closure["achieved_ns"] if closure else "",
-            round(stats.median(achieved), 4),
-            round(min(achieved), 4),
-            round(max(achieved), 4),
-            round(stats.median(area), 2),
-            version_ranks.count(1),
-            min(version_ranks),
-            max(version_ranks),
-            faster_v0,
-            slower_v0,
-            fixed_500["total_mW_08_multiplier"],
-            fixed_500["total_mW_20_power_bench"],
-            round(stats.median(power_mul), 4) if power_mul else "",
-            round(stats.median(power_bench), 4) if power_bench else "",
-            round(stats.median(energy_mul), 4) if energy_mul else "",
-            round(stats.median(energy_bench), 4) if energy_bench else "",
-        ])
+        summary_rows.append(
+            [version, round(stats.median(achieved), 4), round(min(achieved), 4),
+             round(max(achieved), 4), fastest["constraint_ns"], fastest["area_um2"],
+             fastest["sim_period_ns"]]
+            + [fastest.get(f"total_mW_{w}", "") for w in WORKLOADS]
+            + [rounded(fastest.get(f"energy_nJ_{w}")) for w in WORKLOADS]
+            + [round(stats.median(area), 2), version_ranks.count(1), min(version_ranks),
+               max(version_ranks), faster_v0, slower_v0]
+            + [fixed_500.get(f"total_mW_{w}", "") for w in WORKLOADS]
+            + [rounded(fixed_500.get(f"energy_nJ_{w}")) for w in WORKLOADS]
+        )
     write(
         "version_summary.csv",
-        [
-            "version", "first_closing_constraint_ns", "achieved_at_first_closure_ns",
-            "median_achieved_tight_ns", "best_achieved_tight_ns", "worst_achieved_tight_ns",
-            "median_area_tight_um2", "fastest_count_of_13", "best_rank", "worst_rank",
-            "faster_than_V0_count", "slower_than_V0_count",
-            "power_500MHz_mW_08_multiplier", "power_500MHz_mW_20_power_bench",
-            "median_power_mW_08_multiplier", "median_power_mW_20_power_bench",
-            "median_energy_pJ_08_multiplier", "median_energy_pJ_20_power_bench",
-        ],
+        ["version", "median_achieved_tight_ns", "best_achieved_tight_ns", "worst_achieved_tight_ns",
+         "fastest_constraint_ns", "fastest_area_um2", "fastest_sim_period_ns"]
+        + [f"fastest_power_mW_{w}" for w in WORKLOADS]
+        + [f"fastest_energy_nJ_{w}" for w in WORKLOADS]
+        + ["median_area_tight_um2", "fastest_count_of_13", "best_rank", "worst_rank",
+           "faster_than_V0_count", "slower_than_V0_count"]
+        + [f"power_500MHz_mW_{w}" for w in WORKLOADS]
+        + [f"energy_500MHz_nJ_{w}" for w in WORKLOADS],
         summary_rows,
     )
 
@@ -154,11 +140,7 @@ def main() -> None:
     metrics = [
         ("achieved_ns", "ns"),
         ("area_um2", "um2"),
-        ("total_mW_08_multiplier", "mW"),
-        ("total_mW_20_power_bench", "mW"),
-        ("energy_pJ_08_multiplier", "pJ"),
-        ("energy_pJ_20_power_bench", "pJ"),
-    ]
+    ] + [(f"total_mW_{w}", "mW") for w in WORKLOADS] + [(f"energy_nJ_{w}", "nJ") for w in WORKLOADS]
     for before, after in STEPS:
         for metric, unit in metrics:
             deltas = []
@@ -167,6 +149,8 @@ def main() -> None:
                 right = number(by[(after, "new", target)].get(metric, ""))
                 if left is not None and right is not None:
                     deltas.append(right - left)
+            if not deltas:
+                continue
             delta_rows.append([
                 f"{before}->{after}", metric, unit, len(deltas),
                 sum(value < 0 for value in deltas), sum(value > 0 for value in deltas),
@@ -220,32 +204,34 @@ def main() -> None:
         matched_rows,
     )
 
+    # 500 MHz: every version's 2.0 ns netlist, simulated at 2.0 ns.  With
+    # identical cycle counts in every version, energy per run compares the
+    # same work at the same frequency.
     fixed_rows = [by[(version, "new", 2.0)] for version in VERSIONS]
     write(
         "fixed_frequency_power.csv",
-        ["version", "constraint_ns", "achieved_ns", "timing_met", "area_um2",
-         "sim_period_ns", "frequency_MHz", "total_mW_08_multiplier",
-         "total_mW_20_power_bench", "saif_cov_08_multiplier",
-         "saif_cov_20_power_bench"],
-        [[
-            row["version"], row["constraint_ns"], row["achieved_ns"], row["met"],
-            row["area_um2"], row["sim_period_ns"],
-            round(1000.0 / float(row["sim_period_ns"]), 3),
-            row["total_mW_08_multiplier"], row["total_mW_20_power_bench"],
-            row["saif_cov_08_multiplier"], row["saif_cov_20_power_bench"],
-        ] for row in fixed_rows],
+        ["version", "constraint_ns", "achieved_ns", "area_um2", "sim_period_ns", "frequency_MHz"]
+        + [f"total_mW_{w}" for w in WORKLOADS]
+        + [f"energy_nJ_{w}" for w in WORKLOADS]
+        + [f"saif_cov_{w}" for w in WORKLOADS],
+        [[row["version"], row["constraint_ns"], row["achieved_ns"], row["area_um2"],
+          row["sim_period_ns"], round(1000.0 / float(row["sim_period_ns"]), 3)]
+         + [row.get(f"total_mW_{w}", "") for w in WORKLOADS]
+         + [rounded(row.get(f"energy_nJ_{w}")) for w in WORKLOADS]
+         + [row.get(f"saif_cov_{w}", "") for w in WORKLOADS]
+         for row in fixed_rows],
     )
+
+    def delta(before: str, after: str, key: str) -> object:
+        left = number(by[(before, "new", 2.0)].get(key, ""))
+        right = number(by[(after, "new", 2.0)].get(key, ""))
+        return "" if left is None or right is None else round(right - left, 6)
+
     write(
         "fixed_frequency_power_deltas.csv",
-        ["step", "frequency_MHz", "delta_mW_08_multiplier",
-         "delta_mW_20_power_bench"],
-        [[
-            f"{before}->{after}", 500.0,
-            round(float(by[(after, "new", 2.0)]["total_mW_08_multiplier"])
-                  - float(by[(before, "new", 2.0)]["total_mW_08_multiplier"]), 6),
-            round(float(by[(after, "new", 2.0)]["total_mW_20_power_bench"])
-                  - float(by[(before, "new", 2.0)]["total_mW_20_power_bench"]), 6),
-        ] for before, after in STEPS],
+        ["step", "frequency_MHz"] + [f"delta_mW_{w}" for w in WORKLOADS],
+        [[f"{before}->{after}", 500.0] + [delta(before, after, f"total_mW_{w}") for w in WORKLOADS]
+         for before, after in STEPS],
     )
 
     pareto_rows: list[list[object]] = []
@@ -253,13 +239,13 @@ def main() -> None:
     scopes = (("all_versions", tuned),)
     pareto_metrics = (
         ("area", "achieved_ns", "area_um2", "ns", "um2"),
-        ("power_08_multiplier", "sim_period_ns", "total_mW_08_multiplier", "ns", "mW"),
-        ("power_20_mixed", "sim_period_ns", "total_mW_20_power_bench", "ns", "mW"),
-    )
+    ) + tuple((f"power_{w}", "sim_period_ns", f"total_mW_{w}", "ns", "mW") for w in WORKLOADS)
     for scope, scope_rows in scopes:
         for metric, x_key, y_key, x_unit, y_unit in pareto_metrics:
-            members = pareto_members(scope_rows, x_key, y_key)
-            for row in sorted(scope_rows, key=lambda item: (float(item[x_key]), float(item[y_key]))):
+            metric_rows = [row for row in scope_rows
+                           if number(row.get(x_key, "")) is not None and number(row.get(y_key, "")) is not None]
+            members = pareto_members(metric_rows, x_key, y_key)
+            for row in sorted(metric_rows, key=lambda item: (float(item[x_key]), float(item[y_key]))):
                 point_id = (row["version"], row["script"], row["tag"])
                 pareto_rows.append([
                     scope, metric, row["version"], row["constraint_ns"],

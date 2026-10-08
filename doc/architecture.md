@@ -41,7 +41,7 @@ The branch target buffer contains 16 direct-mapped entries indexed by PC bits.
 Each entry stores a tag, target, valid bit and a 2-bit direction counter.
 Conditional branches and register-indirect jumps are resolved in
 decode, allowing incorrect predictions to be corrected before the instruction
-reaches execute. Therefore, only one clk is lost per miss prediction.
+reaches execute, so a misprediction costs one cycle.
 
 The fetch structure and BTB are shown in
 [`03_fetch.svg`](../schematics/03_fetch.svg).
@@ -134,9 +134,3 @@ state and forwarding-request generation—without changing the five-stage
 architectural model. The rationale and measured effect of each snapshot are in
 [`revisions.md`](revisions.md), and the full comparison is in
 [`../analysis/README.md`](../analysis/README.md).
-
-## Public-source scope
-
-The schematics, synthesis evidence, analysis and verification artifacts are
-published. Complete RTL and testbench sources are withheld because of university
-obligations and can be shared privately only where permitted.

@@ -274,9 +274,11 @@ foreach clockPeriod $periods {
     ##  becomes meaningless, and compile_ultra already auto-ungroups whatever
     ##  is worth ungrouping.
     ##
-    ##  -gate_clock is worth a lot here (every pipeline register and every
-    ##  data_reg is enable-driven), but Nangate 45nm has no integrated clock
-    ##  gating cell, so it can fail depending on the DC version.  Fall back.
+    ##  -gate_clock is worth a lot here: every pipeline register and every
+    ##  data_reg is enable-driven.  Nangate 45nm has an integrated clock-gating
+    ##  cell (CLKGATETST_X1), and the published runs gate about 95% of the
+    ##  registers (clock_gating_<tag>.rpt).  The fallback below only covers a
+    ##  DC setup that cannot insert clock gating.
     ##-------------------------------------------------------------------------
     if {[catch {compile_ultra -gate_clock} msg]} {
         echo "NOTE: compile_ultra -gate_clock failed, retrying without it"

@@ -43,7 +43,11 @@ set blockName DLX
 #set periods {1.0 1.2 1.5 1.7 2.0 2.2 2.5 3.0}
 #set periods {1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.5 3.0 3.5 4.0}
 #set periods {0.5 0.8 0.9}
-set periods {1.05 1.15 1.25 1.35 1.45 1.55}
+##  The published sweep, all 21 points.  It was run as two invocations,
+##  {1.0 1.1 ... 2.0 2.5 3.0 3.5 4.0} and then {1.05 1.15 ... 1.55}; each
+##  period is elaborated and compiled from scratch (remove_design -all), so
+##  one list covers both.
+set periods {1.0 1.05 1.1 1.15 1.2 1.25 1.3 1.35 1.4 1.45 1.5 1.55 1.6 1.7 1.8 1.9 2.0 2.5 3.0 3.5 4.0}
 
 
 
@@ -273,9 +277,11 @@ foreach clockPeriod $periods {
     ##  becomes meaningless, and compile_ultra already auto-ungroups whatever
     ##  is worth ungrouping.
     ##
-    ##  -gate_clock is worth a lot here (every pipeline register and every
-    ##  data_reg is enable-driven), but Nangate 45nm has no integrated clock
-    ##  gating cell, so it can fail depending on the DC version.  Fall back.
+    ##  -gate_clock is worth a lot here: every pipeline register and every
+    ##  data_reg is enable-driven.  Nangate 45nm has an integrated clock-gating
+    ##  cell (CLKGATETST_X1), and the published runs gate about 95% of the
+    ##  registers (clock_gating_<tag>.rpt).  The fallback below only covers a
+    ##  DC setup that cannot insert clock gating.
     ##-------------------------------------------------------------------------
     if {[catch {compile_ultra -gate_clock} msg]} {
         echo "NOTE: compile_ultra -gate_clock failed, retrying without it"

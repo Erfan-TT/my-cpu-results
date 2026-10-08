@@ -21,20 +21,21 @@ source report in [`../data/synthesis_runs.csv`](../data/synthesis_runs.csv).
 
 ## Version overview
 
-The period and area columns summarize the 13-point tight band. Power uses the
-common 500 MHz point; first closure and rank ranges are in
-[`../data/version_summary.csv`](../data/version_summary.csv).
+The columns summarize the 13-point tight band. Rank ranges and each version's
+fastest netlist with its own area, power and energy per run are in
+[`../data/version_summary.csv`](../data/version_summary.csv) and the
+[main README](../README.md#version-overview).
 
-| Version | Median period | Best period | Median area | Leads / 13 | Power at 500 MHz: multiplier / mixed |
-|---|---:|---:|---:|---:|---:|
-| V0 | 1.7730 ns | 1.6910 ns | 26,826 µm² | 0 | **4.065** / 4.394 mW |
-| V1 | 1.6178 ns | 1.4997 ns | 26,662 µm² | 1 | 4.082 / **4.388** mW |
-| V2 | 1.5997 ns | 1.4723 ns | 26,965 µm² | 3 | 4.083 / 4.403 mW |
-| V3 | 1.5846 ns | 1.4154 ns | 26,680 µm² | 1 | 4.117 / 4.444 mW |
-| V4 | 1.5726 ns | 1.4456 ns | 26,899 µm² | 1 | 4.399 / 4.696 mW |
-| V5 | 1.5787 ns | 1.4569 ns | 26,797 µm² | 2 | 4.395 / 4.705 mW |
-| V6 | 1.5717 ns | **1.4096 ns** | 26,722 µm² | **4** | 4.374 / 4.684 mW |
-| V7 | 1.5648 ns | 1.5024 ns | 26,724 µm² | 1 | 4.084 / 4.411 mW |
+| Version | Median period | Best period | Median area | Leads / 13 |
+|---|---:|---:|---:|---:|
+| V0 | 1.7730 ns | 1.6910 ns | 26,826 µm² | 0 |
+| V1 | 1.6178 ns | 1.4997 ns | 26,662 µm² | 1 |
+| V2 | 1.5997 ns | 1.4723 ns | 26,965 µm² | 3 |
+| V3 | 1.5846 ns | 1.4154 ns | 26,680 µm² | 1 |
+| V4 | 1.5726 ns | 1.4456 ns | 26,899 µm² | 1 |
+| V5 | 1.5787 ns | 1.4569 ns | 26,797 µm² | 2 |
+| V6 | 1.5717 ns | **1.4096 ns** | 26,722 µm² | **4** |
+| V7 | 1.5648 ns | 1.5024 ns | 26,724 µm² | 1 |
 
 ![Achieved period at every constraint](figures/01_achieved_period_by_constraint.svg)
 
@@ -84,6 +85,9 @@ has a lower achieved period than the column version.
 All optimized versions beat V0 at every point. V6 is faster than V7 at 11 of 13
 matched constraints, while the ordering among V1–V7 changes across the sweep.
 
+A split of 9/13 or less is consistent with chance; see
+[`../doc/methodology.md`](../doc/methodology.md#comparisons).
+
 ## Adjacent revision effects
 
 The speed delta is `later − earlier`.
@@ -101,30 +105,11 @@ The speed delta is `later − earlier`.
 Equal-frequency power deltas are in
 [`../data/fixed_frequency_power_deltas.csv`](../data/fixed_frequency_power_deltas.csv).
 
-### Interpretation by revision
+What these steps mean for each revision, including the V3→V7 and V3→V6
+comparisons that isolate the later edits, is in
+[`../doc/revisions.md`](../doc/revisions.md).
 
-- **V1 is the clearest measured latency improvement.** Its branch decision
-  evaluates forwarded and register-value conditions in parallel. V1 also has
-  other RTL edits, so the gain cannot be assigned to this one change. The
-  snapshot is faster than V0 at all 13 matched points, has lower median area
-  and has nearly unchanged power at 500 MHz.
-- **V2 demonstrates a trade-off.** Parallel target comparisons accompany wins
-  at three constraints; its median area and reported power are higher than V1.
-- **V3 removes work from the register-file read path.** It stores sign/zero
-  metadata and has lower median area than V2; speed differences reverse with
-  constraint, while at 500 MHz, V3 power is higher than V2 on both workloads.
-- **V4 registers the BTB update request.** Its speed difference changes sign
-  across the band, while power at 500 MHz increases by 0.282 mW and 0.252 mW
-  for the two workloads. The same revision also removes illegal-detector
-  guards.
-- **V5 and V6 have small median shifts from their predecessors.** Their speed effects reverse
-  with constraint. V6 nevertheless produces the fastest single run and leads
-  more constraints than any other snapshot.
-- **V7 combines a rollback with retained changes.** Removing the V4/V5 structures lowers
-  power relative to V6 by 0.291 mW and 0.273 mW at 500 MHz. It is slower than V6
-  at 11 of 13 points.
-
-## Area–latency comparison
+## Area versus achieved period
 
 ![Area versus achieved period](figures/03_area_latency_pareto_all_versions.svg)
 
@@ -140,28 +125,33 @@ complete matched-speed table is
 
 ## Equal-frequency power comparison
 
-All versions close timing at the 2.0 ns target. Their power runs use the same
-2.0 ns activity-simulation period and report 100% annotation coverage. The
-archived gate-regression status is `pass` for all eight versions at all 21
-synthesis points, with zero reported failures; see the
-[per-test verdicts](../evidence/power/methodology/README.md).
-The V0–V1 differences at this point are 0.017 mW for the multiplier and 0.007
-mW for the mixed program.
+Every version's 2.0 ns netlist achieves a period of at most 2.0 ns, so all
+eight are simulated at 2.0 ns (500 MHz), with 100% annotation coverage. Each
+activity window covers one run of the program, from the end of reset to its
+final self-loop, and every version runs each program in the same number of
+cycles, so energy per run compares the same work. How the activity is
+produced is in the [power evidence notes](../evidence/power/methodology/README.md).
 
-| Version | Multiplier workload | Mixed workload |
-|---|---:|---:|
-| V0 | **4.065 mW** | 4.394 mW |
-| V1 | 4.082 mW | **4.388 mW** |
-| V2 | 4.083 mW | 4.403 mW |
-| V3 | 4.117 mW | 4.444 mW |
-| V4 | 4.399 mW | 4.696 mW |
-| V5 | 4.395 mW | 4.705 mW |
-| V6 | 4.374 mW | 4.684 mW |
-| V7 | 4.084 mW | 4.411 mW |
+| Version | `20_power_bench` (mixed) | `24_mac_loops` (MAC) | Energy per run: mixed / MAC | `08_multiplier` |
+|---|---:|---:|---:|---:|
+| V0 | **7.240 mW** | 8.107 mW | **40.69** / 69.30 nJ | **8.631 mW** |
+| V1 | 7.242 mW | 8.112 mW | 40.70 / 69.34 nJ | 8.897 mW |
+| V2 | 7.253 mW | **8.098 mW** | 40.76 / **69.22** nJ | 8.778 mW |
+| V3 | 7.409 mW | 8.303 mW | 41.64 / 70.98 nJ | 9.152 mW |
+| V4 | 7.471 mW | 8.286 mW | 41.99 / 70.83 nJ | 9.124 mW |
+| V5 | 7.546 mW | 8.357 mW | 42.41 / 71.44 nJ | 9.145 mW |
+| V6 | 7.476 mW | 8.267 mW | 42.02 / 70.67 nJ | 8.946 mW |
+| V7 | 7.282 mW | 8.267 mW | 40.93 / 70.66 nJ | 8.761 mW |
+
+V0–V2 lie within 0.2% of each other. V3's stored register flags add
+2.1% / 2.5%, the largest single step; V4–V6 stay within about 1% of V3. On
+the mixed program V7 returns most of the way to V0–V2; on the MAC program it
+stays with V3–V6. `08_multiplier` reaches its final loop after 79 cycles, so
+its 70-cycle window is short and noisier than the other two.
 
 ![Equal-frequency total power at 500 MHz](figures/06_power_at_500mhz.svg)
 
-## Power–latency comparison
+## Power versus simulation period
 
 ![Power versus SAIF simulation period](figures/05_power_latency_pareto_all_versions.svg)
 
@@ -169,11 +159,7 @@ Power is plotted against `sim_period_ns`, the clock period used to generate the
 annotated activity. The black line connects the observed Pareto frontier, and
 its filled markers retain the version colors. Exact version and synthesis-
 constraint ownership is available in
-[`../data/pareto_points.csv`](../data/pareto_points.csv). The V4–V6 cluster is
-separated from V0–V3/V7 on both workloads.
-
-No revision is selected as an overall PPA winner. Selection requires a target
-clock and workload; V7 is the most recent archived revision.
+[`../data/pareto_points.csv`](../data/pareto_points.csv).
 
 ## Synthesis-script comparison
 
@@ -207,6 +193,6 @@ universal script effect.
 - [`../data/fixed_frequency_power_deltas.csv`](../data/fixed_frequency_power_deltas.csv) — adjacent power changes at 500 MHz.
 - [`../data/pareto_points.csv`](../data/pareto_points.csv) — all plotted points and frontier membership.
 - [`../data/script_comparison.csv`](../data/script_comparison.csv) — per-version script behavior.
+- [`../data/cycle_counts.csv`](../data/cycle_counts.csv) — RTL cycles per test, every version.
 
-Methodological definitions and reproduction commands are in
-[`../doc/methodology.md`](../doc/methodology.md).
+Metric definitions are in [`../doc/methodology.md`](../doc/methodology.md).

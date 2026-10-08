@@ -12,6 +12,8 @@ Inputs
                                                      statistical power estimate
     post_synthesis_sim/results/gate_results.csv      post-synthesis pass/fail
     post_synthesis_sim/results/power_results.csv     back-annotated power per SAIF
+    post_synthesis_sim/results/saif_manifest.csv     cycles to the program's end and
+                                                     the SAIF window, per SAIF
 
 Outputs
     post_synthesis_sim/results/final_results.csv     one row per corner, the file
@@ -58,6 +60,12 @@ def fnum(v):
         return None
 
 
+def fmt_period(v):
+    """1.6000000000000001 -> 1.6: the period is a whole number of 10 ps."""
+    x = fnum(v)
+    return "" if x is None else f"{x:.3f}".rstrip("0").rstrip(".")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--syn", default=os.path.join(SYN, "reports", "results.csv"),
@@ -68,6 +76,7 @@ def main():
     syn = load(a.syn)
     gate = load(os.path.join(RES, "gate_results.csv"), required=False)
     power = load(os.path.join(RES, "power_results.csv"), required=False)
+    manifest = load(os.path.join(RES, "saif_manifest.csv"), required=False)
 
     # ---- fold the per-test verdicts into a per-corner tally -----------------
     tally = defaultdict(lambda: {"PASS": 0, "FAIL": 0, "SKIP": 0, "fails": []})
@@ -86,12 +95,18 @@ def main():
 
     workloads = sorted({r["workload"] for r in power})
 
+    # ---- cycles and SAIF window, keyed the same way --------------------------
+    mf = defaultdict(dict)
+    for r in manifest:
+        mf[r["tag"]][r["workload"]] = r
+
     # ---- build the joined rows ---------------------------------------------
     cols = ["tag", "period_ns", "achieved_ns", "slack_ns", "met", "area_um2",
             "sim_period_ns", "gate_pass", "gate_fail", "gate_skip", "gate_status",
             "dc_estimate_dynamic_mW", "dc_estimate_leakage_mW"]
     for w in workloads:
-        cols += [f"dyn_mW_{w}", f"leak_mW_{w}", f"total_mW_{w}", f"saif_cov_{w}"]
+        cols += [f"dyn_mW_{w}", f"leak_mW_{w}", f"total_mW_{w}", f"saif_cov_{w}",
+                 f"cycles_{w}", f"window_cycles_{w}", f"energy_nJ_{w}"]
 
     rows = []
     for s in syn:
@@ -111,7 +126,7 @@ def main():
         sim_T = ""
         for w in workloads:
             if w in p:
-                sim_T = p[w].get("sim_period_ns", "")
+                sim_T = fmt_period(p[w].get("sim_period_ns", ""))
                 break
 
         row = {
@@ -138,6 +153,17 @@ def main():
             row[f"leak_mW_{w}"] = e.get("leakage_mW", "")
             row[f"total_mW_{w}"] = e.get("total_mW", "")
             row[f"saif_cov_{w}"] = e.get("saif_coverage_pct", "")
+            # Energy of the SAIF window: average power x window length.  With
+            # the window ending at the program's final self-loop this is the
+            # energy of one run of the program (mW x ns = pJ, / 1000 = nJ).
+            m = mf.get(tag, {}).get(w, {})
+            cyc = m.get("cycles") or ""
+            win = m.get("window_cycles") or ""
+            row[f"cycles_{w}"] = cyc
+            row[f"window_cycles_{w}"] = win
+            tot, per, n = fnum(e.get("total_mW")), fnum(e.get("sim_period_ns")), fnum(win)
+            row[f"energy_nJ_{w}"] = (f"{tot * per * n / 1000:.4f}"
+                                     if None not in (tot, per, n) else "")
         rows.append(row)
 
     rows.sort(key=lambda r: fnum(r["period_ns"]) or 0.0)
@@ -162,8 +188,9 @@ def main():
     A(f"  SAIF workloads    : {', '.join(workloads) if workloads else '(none yet)'}")
     A("")
     A("  Slack is the worst over ALL path groups (REG2REG is normally the one")
-    A("  that binds).  achieved = constraint - slack, and is the period each")
-    A("  netlist was simulated at.")
+    A("  that binds).  achieved = constraint - slack is the period at which")
+    A("  that netlist meets timing, and the period it was simulated at")
+    A("  (rounded up to 10 ps).")
     A("")
 
     A("-" * 78)
@@ -175,19 +202,11 @@ def main():
           f"{'yes' if r['met'] == '1' else 'NO':>4} "
           f"{(fnum(r['area_um2']) or 0):>10.1f}  {r['gate_status']}")
 
-    viol = [fnum(r["achieved_ns"]) for r in rows if r["met"] == "0" and fnum(r["achieved_ns"])]
-    met = [fnum(r["period_ns"]) for r in rows if r["met"] == "1" and fnum(r["period_ns"])]
+    achieved = [(fnum(r["achieved_ns"]), r["tag"]) for r in rows if fnum(r["achieved_ns"])]
     A("")
-    if viol:
-        A(f"  best extrapolated period (min of T - slack over violating corners) : {min(viol):.3f} ns"
-          f"   ->  {1000 / min(viol):.1f} MHz")
-    if met:
-        A(f"  first constraint actually met                                      : {min(met):.2f} ns"
-          f"   ->  {1000 / min(met):.1f} MHz")
-    A("")
-    A("  The two differ because DC stops optimising once a constraint is met, so")
-    A("  T - slack at an over-constrained corner is an extrapolation while the")
-    A("  first met corner is a measurement.  Quote both and say which is which.")
+    if achieved:
+        best, best_tag = min(achieved)
+        A(f"  best achieved period: {best:.4f} ns  ->  {1000 / best:.1f} MHz   (corner {best_tag})")
     A("")
 
     if power:
@@ -198,7 +217,7 @@ def main():
             A("")
             A(f"  workload: {w}")
             A(f"  {'T sim':>7} {'dyn mW':>9} {'leak mW':>9} {'total mW':>9} {'cov %':>7}"
-              f"  {'DC estimate':>12}  ratio")
+              f"  {'DC est. dyn':>12}  ratio  {'cycles':>7} {'window':>7} {'energy nJ':>10}")
             for r in rows:
                 d = fnum(r.get(f"dyn_mW_{w}"))
                 if d is None:
@@ -209,11 +228,16 @@ def main():
                   f"{(fnum(r.get(f'leak_mW_{w}')) or 0):>9.4f} "
                   f"{(fnum(r.get(f'total_mW_{w}')) or 0):>9.4f} "
                   f"{(fnum(r.get(f'saif_cov_{w}')) or 0):>7.1f}"
-                  f"  {(est or 0):>12.4f}  {ratio}")
+                  f"  {(est or 0):>12.4f}  {ratio:>5}"
+                  f"  {r.get(f'cycles_{w}') or '-':>7} {r.get(f'window_cycles_{w}') or '-':>7}"
+                  f" {r.get(f'energy_nJ_{w}') or '-':>10}")
         A("")
-        A("  'DC estimate' is the number report_power gives with no SAIF, from")
-        A("  uniform default toggle rates.  The ratio is how far that guess was")
-        A("  from the measured activity -- worth one line in the report.")
+        A("  'DC est. dyn' is the dynamic power report_power gives with no SAIF,")
+        A("  from uniform default toggle rates; the ratio is measured dynamic over")
+        A("  that guess.  'cycles' is reset to the program's final self-loop,")
+        A("  'window' the SAIF window in cycles, and 'energy' total power over")
+        A("  that window: with the window ending at the self-loop, the energy of")
+        A("  one run of the program.")
         low = [(r["tag"], w, fnum(r.get(f"saif_cov_{w}")))
                for r in rows for w in workloads
                if fnum(r.get(f"saif_cov_{w}")) is not None and fnum(r.get(f"saif_cov_{w}")) < 90]

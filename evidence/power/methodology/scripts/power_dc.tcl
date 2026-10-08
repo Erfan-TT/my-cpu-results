@@ -6,6 +6,10 @@
 #      dc_shell -f post_synthesis_sim/scripts/power_dc.tcl \
 #               | tee post_synthesis_sim/logs/power_dc.log
 #
+#  One workload only (the other rows of power_results.csv are kept):
+#
+#      DLX_PWR_ONLY=24_mac_loops dc_shell -f post_synthesis_sim/scripts/power_dc.tcl
+#
 #  Reads post_synthesis_sim/results/saif_manifest.csv, which run_gate_tests.tcl
 #  writes, and for each entry:
 #
@@ -80,13 +84,42 @@ proc to_mW {value unit} {
 set rows [read_manifest $MANIFEST]
 echo "[llength $rows] SAIF file(s) in $MANIFEST"
 
-set out [open $OUT_CSV w]
-puts $out "tag,workload,sim_period_ns,constraint_ns,dynamic_mW,leakage_mW,total_mW,saif_coverage_pct"
-flush $out
+##  power_results.csv is merged, not overwritten: rows are keyed on
+##  tag,workload, a rerun replaces its own rows, and every other row stays.
+##  DLX_PWR_ONLY (environment) limits this run to workloads containing it.
+set ONLY ""
+if {[info exists ::env(DLX_PWR_ONLY)]} { set ONLY $::env(DLX_PWR_ONLY) }
+set HEADER "tag,workload,sim_period_ns,constraint_ns,dynamic_mW,leakage_mW,total_mW,saif_coverage_pct"
+set pw_order {}
+set pw_lines [dict create]
+if {[file exists $OUT_CSV]} {
+    set f [open $OUT_CSV r]
+    gets $f
+    while {[gets $f ln] >= 0} {
+        if {[string trim $ln] eq ""} { continue }
+        set k [join [lrange [split $ln ","] 0 1] ","]
+        if {![dict exists $pw_lines $k]} { lappend pw_order $k }
+        dict set pw_lines $k $ln
+    }
+    close $f
+}
+##  Named dlx_* and given its data as arguments: a plain "write_power" can
+##  collide with a tool command, and then the CSV is silently never written.
+proc dlx_write_power_csv {path header order lines} {
+    if {[catch {
+        set f [open $path w]
+        puts $f $header
+        foreach k $order { puts $f [dict get $lines $k] }
+        close $f
+    } msg]} {
+        echo "*** could not write $path: $msg"
+    }
+}
 
 foreach row $rows {
     set tag      [dict get $row tag]
     set workload [dict get $row workload]
+    if {$ONLY ne "" && [string first $ONLY $workload] < 0} { continue }
     set saif     [dict get $row saif_path]
     set T        [dict get $row sim_period_ns]
     set con      [dict get $row constraint_ns]
@@ -162,14 +195,15 @@ foreach row $rows {
         echo "      DC's own estimate, not measured switching.  Say so in the report."
     }
 
-    puts $out "$tag,$workload,$T,$con,$dyn,$leak,$tot,$cov"
-    flush $out
+    set k "$tag,$workload"
+    if {![dict exists $pw_lines $k]} { lappend pw_order $k }
+    dict set pw_lines $k "$tag,$workload,$T,$con,$dyn,$leak,$tot,$cov"
+    dlx_write_power_csv $OUT_CSV $HEADER $pw_order $pw_lines
 }
 
-close $out
 echo ""
 echo "=============================================================="
-echo "  wrote $OUT_CSV"
+echo "  wrote $OUT_CSV  ([llength $pw_order] row(s))"
 echo "  per-run reports in $RPT_DIR/power_<tag>_<workload>.rpt"
 echo "  next: python3 post_synthesis_sim/scripts/merge_results.py   (from syn/)"
 echo "=============================================================="

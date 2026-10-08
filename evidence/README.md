@@ -1,22 +1,18 @@
 # Evidence included in this repository
 
-`synthesis/V0` through `synthesis/V7` contain archived synthesis configuration
-files and the reports used by the extraction script:
+- `synthesis/V0` … `synthesis/V7` — for both synthesis scripts: the Tcl
+  script, the SDC constraints, `results.csv`, timing reports (including
+  dedicated REG2REG reports) and QoR reports with cell area. The extraction
+  script parses timing and area from these reports and checks them against
+  each `results.csv`.
+- `power/V0` … `power/V7` — per synthesis point: simulation period, workload
+  power, SAIF coverage and gate-level regression status
+  (`final_results.csv`), and the per-test gate-level verdicts
+  (`gate_results.csv`). The [power methodology notes](power/methodology/README.md)
+  describe how they were produced and their limits.
+- `rtl/V0` … `rtl/V7` — every version's RTL regression: verdict and cycle
+  count per test and memory mode.
 
-- both synthesis Tcl scripts and SDC constraints;
-- `results.csv` for each script arm;
-- timing reports, including dedicated REG2REG reports;
-- QoR reports containing cell area.
-
-Power result tables and per-test gate-simulation verdicts for the tuned-script
-points are under `power/V0` through `power/V7`. The
-[power methodology notes](power/methodology/README.md) describe their
-verification status and limits.
-
-Assembly tests, reference outputs, and archived RTL memory results are included
-under `verification/`. The RTL and testbench are not published because of
-university obligations and may be shared privately where permitted.
-
-Generated gate-level netlists and SDF files are excluded. The timing and area
-numbers in the derived tables are parsed from the included reports and checked
-against each script arm's `results.csv`.
+The assembly programs and the archived V7 RTL memory images are under
+[`../verification/`](../verification/). Gate-level netlists and SDF files are
+not included.

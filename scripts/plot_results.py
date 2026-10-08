@@ -28,7 +28,8 @@ def read(name: str) -> list[dict[str, str]]:
 
 def save(fig: plt.Figure, stem: str) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    fig.savefig(OUT / f"{stem}.svg", bbox_inches="tight", pad_inches=0.12)
+    # No date and a fixed hash salt, so rebuilding unchanged data gives identical files.
+    fig.savefig(OUT / f"{stem}.svg", bbox_inches="tight", pad_inches=0.12, metadata={"Date": None})
     plt.close(fig)
 
 
@@ -70,6 +71,7 @@ def style() -> None:
         "grid.alpha": 0.25,
         "figure.facecolor": "white",
         "axes.facecolor": "white",
+        "svg.hashsalt": "dlx",
     })
 
 
@@ -83,7 +85,7 @@ def main() -> None:
     for version, color in zip(VERSIONS, COLORS):
         values = [float(by[(version, target)]["achieved_ns"]) for target in TIGHT]
         ax.plot(TIGHT, values, marker="o", markersize=3.5, linewidth=1.7, color=color, label=version)
-    ax.plot([min(TIGHT), max(TIGHT)], [min(TIGHT), max(TIGHT)], "--", color="#777777", linewidth=1, label="meets target")
+    ax.plot([min(TIGHT), max(TIGHT)], [min(TIGHT), max(TIGHT)], "--", color="#777777", linewidth=1, label="achieved = requested")
     ax.set(xlabel="requested clock constraint (ns)", ylabel="achieved period (ns)")
     ax.legend(ncol=5, frameon=False, loc="upper left")
     fig.suptitle("Achieved period at every identical synthesis constraint", y=0.98, fontsize=14)
@@ -121,7 +123,7 @@ def main() -> None:
         )
     draw_frontier(ax, new, "achieved_ns", "area_um2")
     ax.set(
-        title="Area–latency design space: all revisions and all constraints",
+        title="Area versus achieved period: all revisions and all constraints",
         xlabel="achieved period (ns)",
         ylabel="cell area (µm²)",
     )
@@ -144,15 +146,17 @@ def main() -> None:
            xlabel="achieved-period difference (ps)")
     save(fig, "04_script_comparison")
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.2, 5.0), sharex=True)
     power_metrics = (
-        ("total_mW_08_multiplier", "multiplier workload"),
-        ("total_mW_20_power_bench", "mixed workload"),
+        ("total_mW_08_multiplier", "08_multiplier"),
+        ("total_mW_20_power_bench", "20_power_bench (mixed)"),
+        ("total_mW_24_mac_loops", "24_mac_loops (multiply-accumulate)"),
     )
+    fig, axes = plt.subplots(1, len(power_metrics), figsize=(17.0, 5.0), sharex=True)
     for ax, (metric, title) in zip(axes, power_metrics):
+        powered = [row for row in new if row.get(metric)]
         for version, color in zip(VERSIONS, COLORS):
             version_rows = sorted(
-                (row for row in new if row["version"] == version),
+                (row for row in powered if row["version"] == version),
                 key=lambda row: float(row["sim_period_ns"]),
             )
             ax.plot(
@@ -166,26 +170,27 @@ def main() -> None:
                 color=color, s=22, alpha=0.72, label=version,
                 edgecolors="white", linewidths=0.35,
             )
-        draw_frontier(ax, new, "sim_period_ns", metric)
+        draw_frontier(ax, powered, "sim_period_ns", metric)
         ax.set_title(title)
         ax.set_xlabel("SAIF simulation period (ns)")
         ax.set_ylabel("total power (mW)")
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, ncol=5, frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.01))
-    fig.suptitle("Power–latency design space: all revisions and all constraints", y=1.07, fontsize=14)
+    fig.suptitle("Power versus simulation period: all revisions and all constraints", y=1.07, fontsize=14)
     fig.tight_layout()
     save(fig, "05_power_latency_pareto_all_versions")
 
     fixed = [by[(version, 2.0)] for version in VERSIONS]
-    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.8), sharey=True)
+    top = max(float(row[metric]) for row in fixed for metric, _ in power_metrics if row.get(metric))
+    fig, axes = plt.subplots(1, len(power_metrics), figsize=(16.5, 4.8), sharey=True)
     for ax, (metric, title) in zip(axes, power_metrics):
-        values = [float(row[metric]) for row in fixed]
+        values = [float(row[metric]) if row.get(metric) else 0.0 for row in fixed]
         bars = ax.bar(VERSIONS, values, color=COLORS, edgecolor="white", linewidth=0.6)
         ax.bar_label(bars, labels=[f"{value:.3f}" for value in values], padding=3, fontsize=8)
         ax.set_title(title)
         ax.set_xlabel("RTL version")
         ax.set_ylabel("total power (mW)")
-        ax.set_ylim(0, 5.25)
+        ax.set_ylim(0, top * 1.12)
     fig.suptitle("Equal-frequency power comparison at 500 MHz", y=1.01, fontsize=14)
     fig.tight_layout()
     save(fig, "06_power_at_500mhz")

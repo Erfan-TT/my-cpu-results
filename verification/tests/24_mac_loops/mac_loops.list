@@ -1,0 +1,268 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  24_mac_loops -- multiply-accumulate workload for switching activity
+    3                      ;=============================================================================
+    4                      ;  Purpose: a power workload that keeps the Booth/Dadda multiplier busy for the
+    5                      ;  whole measured window.  08_multiplier checks products on corner operands and
+    6                      ;  reaches its final self-loop in under 100 cycles; this program loops, so the
+    7                      ;  activity it records is multiply-accumulate work, not the idle loop.
+    8                      ;
+    9                      ;  Five kernels, run r28 times (outer passes):
+   10                      ;    K1  dot product x.y, one accumulator     the add consumes each product at
+   11                      ;                                             distance 1 -- the stalling case
+   12                      ;    K2  dot product x.y, four accumulators   unrolled x4, up to four products
+   13                      ;                                             in flight, loads issued between
+   14                      ;    K3  4-tap FIR  out[n] = sum h[k]*x[n-k]  n = 3..15, four products per
+   15                      ;                                             output, results stored
+   16                      ;    K4  Horner     a3*x^3 + a2*x^2 + a1*x + a0, mult -> add -> mult chain
+   17                      ;    K5  element-wise x[i]*y[i]               the product goes straight to sw
+   18                      ;  K1 and K2 compute the same dot product two ways and must agree.  Each pass
+   19                      ;  folds its results into a running checksum, then adds 0x1357 to x[0], so
+   20                      ;  every pass multiplies different numbers.
+   21                      ;
+   22                      ;  Length knob: r28 at 'main'.  At 4 passes the program reaches its final
+   23                      ;  self-loop after a few thousand cycles.
+   24                      ;
+   25                      ;  Data map (data RAM byte address / word index):
+   26                      ;      0x000 /  0..15   vec_x     16 input words   <- .data
+   27                      ;      0x040 / 16..31   vec_y     16 input words   <- .data
+   28                      ;      0x080 / 32..35   coef      FIR taps h0..h3  <- .data
+   29                      ;      0x090 / 36..39   poly      a0..a3           <- .data
+   30                      ;      0x0A0 / 40..55   fir_out   K3, n = 0..15 (n = 0..2 stay 0)
+   31                      ;      0x0E0 / 56..71   poly_out  K4 at each x
+   32                      ;      0x120 / 72..87   prod_out  K5
+   33                      ;      0x160 / 88       K1 dot product, last pass
+   34                      ;      0x164 / 89       K2 dot product, last pass (equals word 88)
+   35                      ;      0x168 / 90       running checksum
+   36                      ;      0x16C / 91       passes completed
+   37                      ;=============================================================================
+   38  00000000          	
+   39  00000000          	.text
+   40  00000000          	
+   41  00000000          	main:
+   42  00000000  201c0004	addi r28, r0, 4                 ; <-- outer passes, the length knob
+   43  00000004  0000a020	add  r20, r0, r0                ; running checksum
+   44  00000008  0000d820	add  r27, r0, r0                ; passes completed
+   45  0000000c  20030160	addi r3,  r0, scalars
+   46  00000010          	
+   47                      ;=============================================================================
+   48  00000010          	outer:
+   49                      ;-----------------------------------------------------------------------------
+   50                      ;  K1 -- dot product, one accumulator.  The add right after each mult waits
+   51                      ;  for the product: the multiplier's dependent path.
+   52                      ;-----------------------------------------------------------------------------
+   53  00000010  20010000	addi r1, r0, vec_x
+   54  00000014  20020040	addi r2, r0, vec_y
+   55  00000018  20040010	addi r4, r0, 16
+   56  0000001c  00005020	add  r10, r0, r0
+   57  00000020          	
+   58  00000020          	k1:
+   59  00000020  8c250000	lw   r5, 0(r1)
+   60  00000024  8c460000	lw   r6, 0(r2)
+   61  00000028  00a6382e	mult r7, r5, r6
+   62  0000002c  01475020	add  r10, r10, r7               ; product consumed at distance 1
+   63  00000030  20210004	addi r1, r1, 4
+   64  00000034  20420004	addi r2, r2, 4
+   65  00000038  28840001	subi r4, r4, 1
+   66  0000003c  1480ffe0	bnez r4, k1
+   67  00000040          	
+   68                      ;-----------------------------------------------------------------------------
+   69                      ;  K2 -- the same dot product, unrolled x4 into four accumulators.  Loads are
+   70                      ;  issued underneath the multiplies, and the adds come last, so up to four
+   71                      ;  products are in flight.
+   72                      ;-----------------------------------------------------------------------------
+   73  00000040  20010000	addi r1, r0, vec_x
+   74  00000044  20020040	addi r2, r0, vec_y
+   75  00000048  20040004	addi r4, r0, 4
+   76  0000004c  00005820	add  r11, r0, r0
+   77  00000050  00006020	add  r12, r0, r0
+   78  00000054  00006820	add  r13, r0, r0
+   79  00000058  00007020	add  r14, r0, r0
+   80  0000005c          	
+   81  0000005c          	k2:
+   82  0000005c  8c250000	lw   r5, 0(r1)
+   83  00000060  8c460000	lw   r6, 0(r2)
+   84  00000064  8c270004	lw   r7, 4(r1)
+   85  00000068  8c480004	lw   r8, 4(r2)
+   86  0000006c  00a6782e	mult r15, r5, r6
+   87  00000070  8c250008	lw   r5, 8(r1)
+   88  00000074  8c460008	lw   r6, 8(r2)
+   89  00000078  00e8802e	mult r16, r7, r8
+   90  0000007c  8c27000c	lw   r7, 12(r1)
+   91  00000080  8c48000c	lw   r8, 12(r2)
+   92  00000084  00a6882e	mult r17, r5, r6
+   93  00000088  00e8902e	mult r18, r7, r8
+   94  0000008c  016f5820	add  r11, r11, r15
+   95  00000090  01906020	add  r12, r12, r16
+   96  00000094  01b16820	add  r13, r13, r17
+   97  00000098  01d27020	add  r14, r14, r18
+   98  0000009c  20210010	addi r1, r1, 16
+   99  000000a0  20420010	addi r2, r2, 16
+  100  000000a4  28840001	subi r4, r4, 1
+  101  000000a8  1480ffb0	bnez r4, k2
+  102  000000ac          	
+  103  000000ac  016c5820	add  r11, r11, r12
+  104  000000b0  01ae6820	add  r13, r13, r14
+  105  000000b4  016d5820	add  r11, r11, r13              ; K2 result, must equal r10
+  106  000000b8          	
+  107                      ;-----------------------------------------------------------------------------
+  108                      ;  K3 -- 4-tap FIR over x, out[n] = h0*x[n] + h1*x[n-1] + h2*x[n-2] + h3*x[n-3]
+  109                      ;  for n = 3..15.  The taps stay in r21..r24 for the whole kernel.
+  110                      ;-----------------------------------------------------------------------------
+  111  000000b8  20010080	addi r1, r0, coef
+  112  000000bc  8c350000	lw   r21, 0(r1)
+  113  000000c0  8c360004	lw   r22, 4(r1)
+  114  000000c4  8c370008	lw   r23, 8(r1)
+  115  000000c8  8c38000c	lw   r24, 12(r1)
+  116  000000cc  20010000	addi r1, r0, vec_x
+  117  000000d0  2021000c	addi r1, r1, 12                 ; &x[3]
+  118  000000d4  200200a0	addi r2, r0, fir_out
+  119  000000d8  2042000c	addi r2, r2, 12                 ; &out[3]
+  120  000000dc  2004000d	addi r4, r0, 13
+  121  000000e0          	
+  122  000000e0          	k3:
+  123  000000e0  8c250000	lw   r5, 0(r1)
+  124  000000e4  8c26fffc	lw   r6, -4(r1)
+  125  000000e8  8c27fff8	lw   r7, -8(r1)
+  126  000000ec  8c28fff4	lw   r8, -12(r1)
+  127  000000f0  00b5782e	mult r15, r5, r21
+  128  000000f4  00d6802e	mult r16, r6, r22
+  129  000000f8  00f7882e	mult r17, r7, r23
+  130  000000fc  0118902e	mult r18, r8, r24
+  131  00000100  01f07820	add  r15, r15, r16
+  132  00000104  02328820	add  r17, r17, r18
+  133  00000108  01f17820	add  r15, r15, r17
+  134  0000010c  ac4f0000	sw   0(r2), r15
+  135  00000110  028fa020	add  r20, r20, r15
+  136  00000114  20210004	addi r1, r1, 4
+  137  00000118  20420004	addi r2, r2, 4
+  138  0000011c  28840001	subi r4, r4, 1
+  139  00000120  1480ffbc	bnez r4, k3
+  140  00000124          	
+  141                      ;-----------------------------------------------------------------------------
+  142                      ;  K4 -- Horner evaluation of a3*x^3 + a2*x^2 + a1*x + a0 at every x.  Each
+  143                      ;  mult needs the add before it, and each add the mult before it.
+  144                      ;-----------------------------------------------------------------------------
+  145  00000124  20010090	addi r1, r0, poly
+  146  00000128  8c350000	lw   r21, 0(r1)                 ; a0
+  147  0000012c  8c360004	lw   r22, 4(r1)                 ; a1
+  148  00000130  8c370008	lw   r23, 8(r1)                 ; a2
+  149  00000134  8c38000c	lw   r24, 12(r1)                ; a3
+  150  00000138  20010000	addi r1, r0, vec_x
+  151  0000013c  200200e0	addi r2, r0, poly_out
+  152  00000140  20040010	addi r4, r0, 16
+  153  00000144          	
+  154  00000144          	k4:
+  155  00000144  8c250000	lw   r5, 0(r1)
+  156  00000148  0305302e	mult r6, r24, r5
+  157  0000014c  00d73020	add  r6, r6, r23
+  158  00000150  00c5302e	mult r6, r6, r5
+  159  00000154  00d63020	add  r6, r6, r22
+  160  00000158  00c5302e	mult r6, r6, r5
+  161  0000015c  00d53020	add  r6, r6, r21
+  162  00000160  ac460000	sw   0(r2), r6
+  163  00000164  0286a020	add  r20, r20, r6
+  164  00000168  20210004	addi r1, r1, 4
+  165  0000016c  20420004	addi r2, r2, 4
+  166  00000170  28840001	subi r4, r4, 1
+  167  00000174  1480ffcc	bnez r4, k4
+  168  00000178          	
+  169                      ;-----------------------------------------------------------------------------
+  170                      ;  K5 -- element-wise product, stored straight from the multiplier.
+  171                      ;-----------------------------------------------------------------------------
+  172  00000178  20010000	addi r1, r0, vec_x
+  173  0000017c  20020040	addi r2, r0, vec_y
+  174  00000180  20090120	addi r9, r0, prod_out
+  175  00000184  20040010	addi r4, r0, 16
+  176  00000188          	
+  177  00000188          	k5:
+  178  00000188  8c250000	lw   r5, 0(r1)
+  179  0000018c  8c460000	lw   r6, 0(r2)
+  180  00000190  00a6382e	mult r7, r5, r6
+  181  00000194  ad270000	sw   0(r9), r7                  ; product as store data
+  182  00000198  0287a026	xor  r20, r20, r7
+  183  0000019c  20210004	addi r1, r1, 4
+  184  000001a0  20420004	addi r2, r2, 4
+  185  000001a4  21290004	addi r9, r9, 4
+  186  000001a8  28840001	subi r4, r4, 1
+  187  000001ac  1480ffd8	bnez r4, k5
+  188  000001b0          	
+  189                      ;-----------------------------------------------------------------------------
+  190                      ;  end of pass: record K1/K2, fold them into the checksum, change x[0]
+  191                      ;-----------------------------------------------------------------------------
+  192  000001b0  ac6a0000	sw   0(r3), r10                 ; 0x160  K1
+  193  000001b4  ac6b0004	sw   4(r3), r11                 ; 0x164  K2
+  194  000001b8  028aa020	add  r20, r20, r10
+  195  000001bc  028ba020	add  r20, r20, r11
+  196  000001c0  20010000	addi r1, r0, vec_x
+  197  000001c4  8c250000	lw   r5, 0(r1)
+  198  000001c8  20a51357	addi r5, r5, 0x1357
+  199  000001cc  ac250000	sw   0(r1), r5
+  200  000001d0  237b0001	addi r27, r27, 1
+  201  000001d4  2b9c0001	subi r28, r28, 1
+  202  000001d8  1780fe34	bnez r28, outer
+  203  000001dc          	
+  204  000001dc  ac740008	sw   8(r3), r20                 ; 0x168  checksum
+  205  000001e0  ac7b000c	sw   12(r3), r27                ; 0x16C  passes
+  206  000001e4          	
+  207  000001e4  0bfffffc	end:    j end
+  208  000001e8          	
+  209                      ;=============================================================================
+  210  000001e8          	.data 0
+  211  00000000          	
+  212  00000000          	vec_x:                                  ; 0x000
+  213  00000000  00001234	.word 0x00001234, 0xFFFFFF85, 0x7FFF0001, 0x00010001
+  213  00000004  ffffff85	
+  213  00000008  7fff0001	
+  213  0000000c  00010001	
+  214  00000010  80000003	.word 0x80000003, 0x0000FFFF, 0x12345678, 0xFEDCBA98
+  214  00000014  0000ffff	
+  214  00000018  12345678	
+  214  0000001c  fedcba98	
+  215  00000020  00000007	.word 0x00000007, 0x55555555, 0xAAAAAAAB, 0x0F0F0F0F
+  215  00000024  55555555	
+  215  00000028  aaaaaaab	
+  215  0000002c  0f0f0f0f	
+  216  00000030  f0f0f0f1	.word 0xF0F0F0F1, 0x000003E8, 0xDEADBEEF, 0x00C0FFEE
+  216  00000034  000003e8	
+  216  00000038  deadbeef	
+  216  0000003c  00c0ffee	
+  217  00000040          	
+  218  00000040          	vec_y:                                  ; 0x040
+  219  00000040  00000011	.word 0x00000011, 0x00ABCDEF, 0xFFFF0003, 0x0000FFFE
+  219  00000044  00abcdef	
+  219  00000048  ffff0003	
+  219  0000004c  0000fffe	
+  220  00000050  00000002	.word 0x00000002, 0x7FFFFFFF, 0x9ABCDEF0, 0x00000101
+  220  00000054  7fffffff	
+  220  00000058  9abcdef0	
+  220  0000005c  00000101	
+  221  00000060  cafebabe	.word 0xCAFEBABE, 0x33333333, 0x00000005, 0xFFFFFFFF
+  221  00000064  33333333	
+  221  00000068  00000005	
+  221  0000006c  ffffffff	
+  222  00000070  13579bdf	.word 0x13579BDF, 0x2468ACE0, 0x0000FFFF, 0x80000001
+  222  00000074  2468ace0	
+  222  00000078  0000ffff	
+  222  0000007c  80000001	
+  223  00000080          	
+  224  00000080          	coef:                                   ; 0x080  h0..h3
+  225  00000080  00000003	.word 0x00000003, 0xFFFFFFFB, 0x00000007, 0x0000000B
+  225  00000084  fffffffb	
+  225  00000088  00000007	
+  225  0000008c  0000000b	
+  226  00000090          	
+  227  00000090          	poly:                                   ; 0x090  a0..a3
+  228  00000090  00000011	.word 0x00000011, 0xFFFFFFFD, 0x00000005, 0x00000002
+  228  00000094  fffffffd	
+  228  00000098  00000005	
+  228  0000009c  00000002	
+  229  000000a0          	
+  230  000000a0          	fir_out:                                ; 0x0A0
+  231  000000a0          	.space 64
+  232  000000e0          	poly_out:                               ; 0x0E0
+  233  000000e0          	.space 64
+  234  00000120          	prod_out:                               ; 0x120
+  235  00000120          	.space 64
+  236  00000160          	scalars:                                ; 0x160
+  237  00000160          	.space 16

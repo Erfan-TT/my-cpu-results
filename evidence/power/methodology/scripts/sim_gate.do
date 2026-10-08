@@ -23,6 +23,13 @@
 #                 reported but does NOT drive the flop to X   (default 0)
 #    g_init_rf    1 to deposit 0 into the register-file flops at time 0
 #                 (they have no reset in the RTL)             (default 1)
+#    g_stop_at_end 1 to end the run (and the SAIF window) when the program
+#                 reaches its final self-loop, see TB_DLX's end-of-program
+#                 monitor; g_runtime is then only the upper bound (default 0)
+#
+#  Outputs, set after the run:
+#    g_cycles         cycles from reset to the final self-loop, "" if never
+#    g_window_cycles  length of the SAIF window in cycles, "" without a SAIF
 #
 #  Why SDF and the TB clock are independent:  the delays in the .sdf are
 #  absolute picoseconds, fixed at synthesis.  The testbench clock is a free
@@ -43,8 +50,29 @@ if {![info exists g_settle]}   { set g_settle  "" }
 if {![info exists g_quiet]}    { set g_quiet    "" }
 if {![info exists g_notifier]} { set g_notifier 0 }
 if {![info exists g_init_rf]}  { set g_init_rf  1 }
+if {![info exists g_stop_at_end]} { set g_stop_at_end 0 }
+set g_cycles        ""
+set g_window_cycles ""
 
 set g_base ../../../verification/tests/$g_dir/$g_name
+
+#  The program ends in a "j" to itself, which always encodes as 0BFFFFFC.
+#  Its line in the instruction image is its word address.  -1 if absent.
+proc find_end_pc {imem} {
+    set f [open $imem r]
+    set i 0
+    set pc -1
+    while {[gets $f line] >= 0} {
+        if {[string toupper [string trim $line]] eq "0BFFFFFC"} {
+            set pc [expr {4 * $i}]
+            break
+        }
+        incr i
+    }
+    close $f
+    return $pc
+}
+set g_end_pc [find_end_pc ${g_base}_imem.txt]
 
 set vsim_cmd [list vsim -quiet -t 1ps]
 
@@ -73,7 +101,8 @@ lappend vsim_cmd \
     -gmemory_size=$g_words \
     -gIRAM_FILE=${g_base}_imem.txt \
     -gDRAM_FILE_INIT=${g_base}_dmem_init.txt \
-    -gDRAM_FILE_OUT=${g_base}_dmem_gate${g_suffix}.txt
+    -gDRAM_FILE_OUT=${g_base}_dmem_gate${g_suffix}.txt \
+    -gEND_PC=$g_end_pc
 
 #  +acc keeps the internal nets visible.  "power add -r" cannot see them
 #  otherwise and the SAIF comes out nearly empty.
@@ -111,6 +140,22 @@ if {$g_init_rf} {
     set rf [lsort -unique $rf]
     foreach s $rf { force -deposit $s 1'b0 0 }
     echo "  register file seeded to 0: [llength $rf] flop(s)"
+    #  V3 onward keeps a zero flag beside every register.  The RTL starts it
+    #  at '1' -- an all-zero register IS zero -- so seed the same here, or
+    #  every unwritten register would claim to be non-zero and a branch on it
+    #  would go the other way than in the RTL simulation.  (The sign flag has
+    #  no flop of its own: synthesis merges it with data bit 31.)
+    set zf {}
+    foreach pat {/tb_dlx/dlx_i/*reg_file_sign_zero_bits_reg_*__0_/IQ
+                 /tb_dlx/dlx_i/*/*reg_file_sign_zero_bits_reg_*__0_/IQ
+                 /tb_dlx/dlx_i/*/*/*reg_file_sign_zero_bits_reg_*__0_/IQ} {
+        foreach s [find signals -r $pat] { lappend zf $s }
+    }
+    set zf [lsort -unique $zf]
+    foreach s $zf { force -deposit $s 1'b1 0 }
+    if {[llength $zf] > 0} {
+        echo "  register zero flags seeded to 1: [llength $zf] flop(s)"
+    }
     if {[llength $rf] == 0} {
         echo "  *** none found -- check the instance path with:"
         echo "      find signals -r /tb_dlx/dlx_i/*reg_file*"
@@ -145,7 +190,23 @@ if {$g_saif ne ""} {
         #  happens again and it is not representative of the workload.
         power reset
     }
-    run $g_runtime
+    set c0 [examine -radix decimal /tb_dlx/counter]
+    if {$g_stop_at_end && $g_end_pc >= 0} {
+        #  End the window at the program's final self-loop.  "resume" makes
+        #  the do-file carry on after the run that the stop ended.
+        onbreak {resume}
+        when -label prog_end {/tb_dlx/prog_done == '1'} { stop }
+        run $g_runtime
+        nowhen prog_end
+        if {[examine /tb_dlx/prog_done] ne "1"} {
+            echo "  *** the program never reached its final self-loop;"
+            echo "      the SAIF window is the whole runtime"
+        }
+    } else {
+        run $g_runtime
+    }
+    set g_window_cycles [expr {[examine -radix decimal /tb_dlx/counter] - $c0}]
+    echo "  SAIF window: $g_window_cycles cycles"
     power report -all -bsaif $g_saif
 } else {
     if {$g_quiet ne ""} {
@@ -154,6 +215,14 @@ if {$g_saif ne ""} {
         quiet_numeric 0
     }
     run $g_runtime
+}
+
+set g_cycles [examine -radix decimal /tb_dlx/prog_end_cycle]
+if {$g_cycles < 0} {
+    set g_cycles ""
+    echo "  cycles: program did not reach its final self-loop"
+} else {
+    echo "  cycles: $g_cycles from reset to the final self-loop"
 }
 
 quit -sim

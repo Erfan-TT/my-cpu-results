@@ -16,7 +16,8 @@
 #                  the netlist is logically the RTL: timing is signed off by
 #                  static analysis, which covers every path, while a simulation
 #                  only ever exercises the paths the stimulus happens to hit.
-#                  It also sidesteps the pre-layout hold artefacts.  (default 0)
+#                  It also sidesteps the pre-layout hold artefacts.
+#                  (default 1, as used for the published runs)
 #      saif_sdf    1 to annotate the SDF for the SAIF workloads.  OFF by default
 #                  PRE-LAYOUT, on purpose.  Annotating does add glitch activity,
 #                  which is real power -- but pre-layout those glitches come out
@@ -30,6 +31,17 @@
 #                  SDF carries a real clock tree and extracted RC.   (default 0)
 #      csv         path to the synthesis results               (default ../../reports/results.csv)
 #      skip_power  1 to skip the SAIF workloads                (default 0)
+#      power_tests SAIF workloads, a list of test folders
+#                  (default {20_power_bench 08_multiplier 24_mac_loops}).
+#                  "set power_tests 24_mac_loops" runs one workload alone.
+#      saif_to_end 1 to end each SAIF window when the program reaches its
+#                  final self-loop, so the activity is the program and not
+#                  the idle loop after it; 0 for a fixed window of the scaled
+#                  runtime                                   (default 1)
+#      fresh       1 to start gate_results.csv and saif_manifest.csv empty
+#                  instead of merging this run into them      (default 0).
+#                  Merging keeps the rows of every test, corner and workload
+#                  this run did not touch.
 #      notifier    1 to let timing-check violations drive flops to X.  Off by
 #                  default: this is a PRE-LAYOUT netlist with no clock tree, so
 #                  its hold violations are an artefact, not a result.  See the
@@ -60,7 +72,12 @@
 #    2. vlog that netlist into ../work_gate, replacing the previous DLX
 #    3. assemble + golden-model each test, run it on the NETLIST with SDF,
 #       diff the data memory against the golden dump
-#    4. re-run the two power workloads with a SAIF attached
+#    4. re-run the power workloads with a SAIF attached; by default each SAIF
+#       window runs from the end of reset to the program's final self-loop
+#
+#  Every run also records the cycle count from reset to that self-loop:
+#  gate_results.csv per test, saif_manifest.csv per workload together with
+#  the length of the SAIF window in cycles.
 #
 #  The simulation period is the ACHIEVED period, T_constraint - WNS, rounded up
 #  to 10 ps.  That is the fastest clock the netlist really sustains: for a
@@ -78,7 +95,7 @@ source ../../../verification/scripts/testlist.tcl
 if {![info exists only]}       { set only "" }
 if {![info exists only_test]}  { set only_test "" }
 if {![info exists recompile]}  { set recompile 1 }
-if {![info exists no_sdf]}     { set no_sdf 0 }
+if {![info exists no_sdf]}     { set no_sdf 1 }
 if {![info exists saif_sdf]}   { set saif_sdf 0 }
 if {![info exists skip_power]} { set skip_power 0 }
 if {![info exists csv]}        { set csv ../../reports/results.csv }
@@ -87,12 +104,15 @@ if {![info exists init_rf]}    { set init_rf 1 }
 if {![info exists grain_ps]}   { set grain_ps 10 }
 if {![info exists ntc]}        { set ntc 1 }
 if {![info exists saif_only]} {set saif_only 0 }
+if {![info exists power_tests]} { set power_tests {20_power_bench 08_multiplier 24_mac_loops} }
+if {![info exists saif_to_end]} { set saif_to_end 1 }
+if {![info exists fresh]}       { set fresh 0 }
 
-#  Workloads that get a SAIF.  The first is the designed switching-activity
-#  benchmark, the second a deliberately different profile, so the report can
-#  say how much the power number moves with the program instead of quoting one
-#  figure as if it were a property of the silicon.
-set POWER_TESTS {20_power_bench 08_multiplier}
+#  Workloads that get a SAIF.  20_power_bench is the designed switching-activity
+#  benchmark, 08_multiplier and 24_mac_loops deliberately different profiles,
+#  so the report can say how much the power number moves with the program
+#  instead of quoting one figure as if it were a property of the silicon.
+set POWER_TESTS $power_tests
 
 set RTL_TB_PERIOD 20.0   ;# ns, the clock testlist.tcl runtimes assume
 
@@ -149,6 +169,37 @@ proc step {label cmd} {
         if {[string trim $line] ne ""} { puts "      $line" }
     }
     return [expr {$rc == 0}]
+}
+
+#-----------------------------------------------------------------------------
+#  Merge rows into a CSV instead of overwriting it, so a partial run (one test,
+#  one corner, one workload) keeps every other row.  Rows are keyed on their
+#  first two fields; a rerun replaces its own rows in place, new rows go last.
+#  "set fresh 1" before sourcing starts the file empty instead.
+#-----------------------------------------------------------------------------
+proc merge_csv {path header rows fresh} {
+    set order {}
+    set lines [dict create]
+    if {!$fresh && [file exists $path]} {
+        set f [open $path r]
+        gets $f
+        while {[gets $f ln] >= 0} {
+            if {[string trim $ln] eq ""} { continue }
+            set k [join [lrange [split $ln ","] 0 1] ","]
+            if {![dict exists $lines $k]} { lappend order $k }
+            dict set lines $k $ln
+        }
+        close $f
+    }
+    foreach ln $rows {
+        set k [join [lrange [split $ln ","] 0 1] ","]
+        if {![dict exists $lines $k]} { lappend order $k }
+        dict set lines $k $ln
+    }
+    set f [open $path w]
+    puts $f $header
+    foreach k $order { puts $f [dict get $lines $k] }
+    close $f
 }
 
 proc read_csv {path} {
@@ -299,6 +350,8 @@ if {!$saif_only} {
         set ::g_settle   ""
         set ::g_notifier $notifier
         set ::g_init_rf  $init_rf
+        set ::g_stop_at_end 0
+        set ::g_cycles   ""
 
         if {[catch {source sim_gate.do} msg]} {
             echo "      gate simulation failed: $msg"
@@ -313,10 +366,10 @@ if {!$saif_only} {
         file delete -force ${base}_dmem_scratch.txt
 
         if {$ok} {
-            lappend summary [list $tag $dir PASS ""]
+            lappend summary [list $tag $dir PASS "" $::g_cycles]
             incr n_pass
         } else {
-            lappend summary [list $tag $dir FAIL "dmem mismatch"]
+            lappend summary [list $tag $dir FAIL "dmem mismatch" $::g_cycles]
             incr n_fail
         }
     }
@@ -364,6 +417,9 @@ if {!$saif_only} {
         set ::g_quiet    ""
         set ::g_notifier $notifier
         set ::g_init_rf  $init_rf
+        set ::g_stop_at_end $saif_to_end
+        set ::g_cycles   ""
+        set ::g_window_cycles ""
 
         if {[catch {source sim_gate.do} msg]} {
             echo "      SAIF run failed: $msg"
@@ -388,7 +444,7 @@ if {!$saif_only} {
 
         if {[file exists $saif]} {
             echo "      saif -> $saif   (workload verified)"
-            lappend manifest [list $tag $dir $saif $T $period]
+            lappend manifest [list $tag $dir $saif $T $period $::g_cycles $::g_window_cycles]
         } else {
             echo "      *** no SAIF produced; does this ModelSim have 'power add'?"
         }
@@ -398,32 +454,36 @@ if {!$saif_only} {
 #-----------------------------------------------------------------------------
 #  outputs
 #-----------------------------------------------------------------------------
-set f [open $RESULT_DIR/gate_results.csv w]
-puts $f "tag,test,verdict,note"
+set csv_rows {}
 foreach r $summary {
-    lassign $r tag dir verdict why
-    puts $f "$tag,$dir,$verdict,\"$why\""
+    lassign $r tag dir verdict why cyc
+    lappend csv_rows "$tag,$dir,$verdict,\"$why\",$cyc"
 }
-close $f
+merge_csv $RESULT_DIR/gate_results.csv "tag,test,verdict,note,cycles" $csv_rows $fresh
 
-set f [open $RESULT_DIR/saif_manifest.csv w]
-puts $f "tag,workload,saif_path,sim_period_ns,constraint_ns"
-foreach r $manifest {
-    lassign $r tag dir path T period
-    puts $f "$tag,$dir,$path,$T,$period"
+#  %g turns the rounded-up period back into 1.6 instead of 1.6000000000000001.
+#  A skip_power run has no SAIFs and leaves the manifest alone.
+if {!$skip_power} {
+    set csv_rows {}
+    foreach r $manifest {
+        lassign $r tag dir path T period cyc win
+        lappend csv_rows "$tag,$dir,$path,[format %g $T],$period,$cyc,$win"
+    }
+    merge_csv $RESULT_DIR/saif_manifest.csv \
+        "tag,workload,saif_path,sim_period_ns,constraint_ns,cycles,window_cycles" \
+        $csv_rows $fresh
 }
-close $f
 
 echo "\n=============================================================="
 echo "  SUMMARY"
 echo "=============================================================="
 foreach r $summary {
-    lassign $r tag dir verdict why
-    echo [format "  %-6s %-6s %-28s %s" $verdict $tag $dir $why]
+    lassign $r tag dir verdict why cyc
+    echo [format "  %-6s %-6s %-28s %7s  %s" $verdict $tag $dir $cyc $why]
 }
 echo ""
 echo "  $n_pass passed, $n_fail failed, $n_skip skipped"
-echo "  $RESULT_DIR/gate_results.csv"
+echo "  $RESULT_DIR/gate_results.csv   (merged; cycles from reset to the final self-loop)"
 echo "  $RESULT_DIR/saif_manifest.csv   ([llength $manifest] SAIF file(s))"
 echo ""
 if {$n_fail > 0} {

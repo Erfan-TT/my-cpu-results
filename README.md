@@ -1,171 +1,108 @@
 # 5-Stage Pipelined DLX Processor
 
-An evidence-backed design study of a 32-bit VHDL processor across eight RTL
-revisions (V0–V7). The repository includes architecture schematics, 336
-synthesis runs, switching-activity power estimates, gate-level regression
-results, and scripts to reproduce the published analysis.
-
-The processor has branch prediction, forwarding and hazard control, a
-pipelined Booth/Dadda multiplier, byte/half-word/word memory operations, and
-exception handling.
-
-The complete RTL is not published here because of university obligations.
-This public repository therefore focuses on the
-architecture, synthesis and power results, verification evidence, and
-reproducible analysis. The RTL can be shared privately where permitted.
-
-Start with the [architecture](#processor-architecture),
-[revision history](#design-space-exploration), [results](#synthesis-analysis),
-or [verification](#verification). Timing and area cover both synthesis scripts;
-workload-annotated power covers the tuned-script points.
-
-## Processor architecture
-
-The implementation is organized as a five-stage pipeline with a
-structural datapath and a separate hardwired control path:
-
-| Stage | Main work |
-|---|---|
-| IF | PC selection, instruction request, BTB lookup, prediction and IF/ID state |
-| ID | decode, integer/special-register access, immediate generation, branch resolution and early exception detection |
-| EX | operand forwarding, ALU/compare/shift operations, Booth/Dadda multiplication and effective-address generation |
-| MEM | data-memory transaction, byte/half-word selection, store formatting, alignment checks and exception commit |
-| WB | Register-file write-port signals; sign/zero metadata generation in V3–V7 |
+A 32-bit DLX processor in VHDL, with branch prediction, forwarding, a pipelined
+Booth/Dadda multiplier, byte/half-word/word memory operations and exceptions,
+and a study of eight RTL revisions (V0–V7) that shorten its clock period. The
+repository holds the schematics, 336 Design Compiler runs, workload-annotated
+power estimates, RTL and gate-level regression results, and the scripts that
+rebuild every table and figure. The RTL itself is withheld because of
+university obligations; it can be shared privately where permitted.
 
 ![Five-stage datapath and stage interfaces](schematics/02_datapath.svg)
 
-The instruction and data sides use separate memory interfaces. The instruction
-side supports a cache-backed mode; the data side supports byte-addressed
-byte/half-word/word transfers and a handshaked slow-memory mode. Pipeline state
-is held at the IF/ID, ID/EX, EX/MEM and MEM/WB boundaries.
+The pipeline, forwarding network, branch prediction, memory system and
+exceptions are described in [`doc/architecture.md`](doc/architecture.md), with
+stage-level sheets in [`schematics/`](schematics/).
 
-### Branch prediction and jumps
+## Results
 
-Fetch selects among sequential `PC+4`, a BTB prediction, a decode-stage
-correction, and an exception or return address. The BTB has 16 direct-mapped
-rows with tags, targets, valid bits and 2-bit direction counters. Branches and indirect
-jumps are resolved in decode, making decode-to-PC control a recurring timing
-concern in the synthesis reports.
-
-### Hazards, forwarding and long-latency execution
-
-The control path carries decoded fields beside the instruction through the
-pipeline. Forwarding covers EX→EX, MEM→EX, EX→ID branch operands,
-register-file read-during-write and load→store data. A load-use dependency
-stalls when the value cannot reach the immediately following EX stage. The
-multiplier is internally pipelined and uses scoreboard state so independent
-instructions can continue while a product is in flight.
-
-![Control pipeline, hazards and forwarding](schematics/04_controlpath.svg)
-
-### Memory and exceptions
-
-The memory stage implements `lb`, `lbu`, `lh`, `lhu`, `lw`, `sb`, `sh` and
-`sw`. It selects load lanes, extends loaded bytes and half-words, and sizes
-store data. The memory model merges sub-word stores into the addressed word.
-Misaligned accesses, illegal instructions, traps and misaligned control-flow
-targets are converted into a cause/value/PC bundle that travels with the
-instruction to exception commit. Detailed stage sheets are in
-[`schematics/`](schematics/).
-
-More architectural detail is in
-[`doc/architecture.md`](doc/architecture.md).
-
-## Design-space exploration
-
-V0 is the baseline. Each row starts with the first path in the **previous
-version's 1.0 ns tuned-script report**, the synthesis flow used for the RTL
-iteration. The RTL change is stated separately; some edits did not directly
-alter the reported path.
-
-| Revision | Previous path: start → end | RTL meaning | Change in this revision |
-|---|---|---|---|
-| V1 | [V0](evidence/synthesis/V0/new/timing_1p0.rpt): IF instruction bit 24 → PC bit 0 | Source-register selection and branch/redirect control reach the PC. | Parallelize branch-condition evaluation; also change forwarding, redirect comparison and exception-vector logic. |
-| V2 | [V1](evidence/synthesis/V1/new/timing_1p0.rpt): IF instruction bit 21 → PC bit 5 | Source-register address feeds decode branch/redirect logic. | Compare predicted address with three candidate targets in parallel, then select a one-bit mismatch. |
-| V3 | [V2](evidence/synthesis/V2/new/timing_1p0.rpt): IF instruction bit 30 → PC bit 19 | Instruction decode and branch correction feed the PC redirect. | Store and bypass sign/zero metadata, removing zero detection from a branch-operand cone; the exact reported opcode-to-PC path is not isolated. |
-| V4 | [V3](evidence/synthesis/V3/new/timing_1p0.rpt): MEM/WB destination bit 1 → multiplier tree register bit 30 | WB bypass/forwarding can affect an EX multiplier operand. | Register BTB updates and remove BTB-facing guards; neither directly edits this multiplier route. |
-| V5 | [V4](evidence/synthesis/V4/new/timing_1p0.rpt): ID/EX `rs2` index bit 0 → multiplier tree register bit 28 | Source-register index selects EX forwarding and multiplier input. | Move special-register index guards outside exception priority logic; no direct edit to EX forwarding. |
-| V6 | [V5](evidence/synthesis/V5/new/timing_1p0.rpt): ID/EX `rs2` index bit 0 → multiplier tree register bit 30 | `rs2` comparison selects the forwarded multiplier operand. | Make EX and MEM forwarding requests independent before the operand mux. |
-| V7 | [V6](evidence/synthesis/V6/new/timing_1p0.rpt): MEM/WB destination bit 0 → multiplier tree register bit 31 | WB destination comparison selects a forwarded multiplier operand. | Remove V4/V5 structures while retaining V3/V6; no direct edit to this multiplier route. |
-
-See [`doc/revisions.md`](doc/revisions.md) for the complete rationale behind
-every revision.
-
-## Synthesis analysis
-
-The study contains 336 Design Compiler runs. The main matched band covers 13
-requested periods from 1.00 ns through 1.60 ns for every version and both
-synthesis scripts. The overview below uses tuned-script results; its period
-and area extrema come from the 13-point band. First closure considers all 21
-constraints. Power at 500 MHz uses a common 2.0 ns simulation period.
+All eight versions run every test program in exactly the same number of
+cycles ([`data/cycle_counts.csv`](data/cycle_counts.csv)), so a version's speed
+is its achieved clock period alone. Achieved period is
+`requested period − worst slack`: the period at which that netlist meets
+timing.
 
 ### Version overview
 
-| Version | First closure | Best period | Median area | Power at 500 MHz: multiplier / mixed |
-|---|---:|---:|---:|---:|
-| V0 | 2.0 ns | 1.6910 ns | 26,826 µm² | **4.065** / 4.394 mW |
-| V1 | 1.7 ns | 1.4997 ns | 26,662 µm² | 4.082 / **4.388** mW |
-| V2 | 1.6 ns | 1.4723 ns | 26,965 µm² | 4.083 / 4.403 mW |
-| V3 | 1.7 ns | 1.4154 ns | 26,680 µm² | 4.117 / 4.444 mW |
-| V4 | 1.7 ns | 1.4456 ns | 26,899 µm² | 4.399 / 4.696 mW |
-| V5 | 1.7 ns | 1.4569 ns | 26,797 µm² | 4.395 / 4.705 mW |
-| V6 | 1.6 ns | **1.4096 ns** | 26,722 µm² | 4.374 / 4.684 mW |
-| V7 | 1.7 ns | 1.5024 ns | 26,724 µm² | 4.084 / 4.411 mW |
+Each row describes one netlist: the version's fastest run, with that
+netlist's own area, power and energy at its achieved period. The last column
+compares every version at a common 500 MHz, using its 2.0 ns netlist. Power
+is measured on two programs, the mixed `20_power_bench` (2,819 cycles) and
+the multiply-accumulate `24_mac_loops` (4,283 cycles); energy is for one run
+of each.
 
-### Analysis conclusions
+| Version | Fastest achieved period | Area | Power at that period: mixed / MAC | Energy per run: mixed / MAC | Power at 500 MHz: mixed / MAC |
+|---|---:|---:|---:|---:|---:|
+| V0 | 1.6910 ns | 27,042 µm² | 8.65 / 9.73 mW | **41.3** / **70.7** nJ | **7.24** / 8.11 mW |
+| V1 | 1.4997 ns | 26,848 µm² | 9.82 / 11.14 mW | 41.4 / 71.4 nJ | 7.24 / 8.11 mW |
+| V2 | 1.4723 ns | 27,474 µm² | 10.25 / 11.57 mW | 42.6 / 73.2 nJ | 7.25 / **8.10** mW |
+| V3 | 1.4154 ns | 27,068 µm² | 10.56 / 11.91 mW | 42.1 / 72.3 nJ | 7.41 / 8.30 mW |
+| V4 | 1.4456 ns | 27,281 µm² | 10.59 / 12.07 mW | 43.1 / 74.8 nJ | 7.47 / 8.29 mW |
+| V5 | 1.4569 ns | 27,641 µm² | 10.75 / 12.11 mW | 44.1 / 75.6 nJ | 7.55 / 8.36 mW |
+| V6 | **1.4096 ns** | 27,888 µm² | 10.99 / 12.32 mW | 43.5 / 74.2 nJ | 7.48 / 8.27 mW |
+| V7 | 1.5024 ns | 27,187 µm² | 9.86 / 11.04 mW | 41.8 / 71.2 nJ | 7.28 / 8.27 mW |
 
-| Finding | Evidence |
-|---|---|
-| The optimization sequence consistently improves on V0 latency | V1–V7 are faster than V0 at all 13 matched tight constraints |
-| Speed leadership depends on the synthesis constraint | Every optimized version leads at least one point; V6 leads most often at 4/13 |
-| V6 reaches the highest observed frequency | Best achieved period is 1.4096 ns; V6 and V2 first close the sampled 1.6 ns target |
-| Area and latency must be selected together | V6 has the smallest observed area at or below 1.60 ns; V1 has the smallest at or below 1.70 ns |
-| The lowest reported 500 MHz power depends on workload | V0 is lowest for the multiplier program and V1 for the mixed program; the V0–V1 differences are only 0.017 / 0.007 mW |
-| V7 reverses much of the V4–V6 power increase | At 500 MHz, V7 measures 4.084 / 4.411 mW, close to the V0–V3 cluster |
+Power at different periods is not directly comparable, because a faster
+netlist switches more often; compare power at 500 MHz, or energy per run.
 
-### Area–latency design space
+### Which version for which goal
 
-![Area–latency design space for all revisions](analysis/figures/03_area_latency_pareto_all_versions.svg)
+| Goal | Choice | Evidence |
+|---|---|---|
+| Highest frequency | V6 | 1.4096 ns (709 MHz); V3 is 5.8 ps behind |
+| Best balance of speed, area and energy | V3 | lowest energy × time on both programs (168 / 438 nJ·µs against V6's 173 / 448), with 820 µm² less area than V6 |
+| Lowest power at a fixed 500 MHz | V0 / V1 / V2 | within 0.2% of each other; V3–V6 draw 2–4% more |
+| Smallest area at or below 1.60 ns | V6 | 25,895 µm² at 1.6000 ns |
+| Smallest area at or below 1.70 ns | V1 | 25,191 µm² at 1.7000 ns |
 
-### Power–latency design space
+### What each revision did
 
-![Power–latency design space for all revisions](analysis/figures/05_power_latency_pareto_all_versions.svg)
+Measured over 13 identical requested constraints (1.00–1.60 ns): how many got
+faster than the previous version, the median change in achieved period, and
+the change in power at 500 MHz.
 
-Here the horizontal coordinate is the activity-simulation period, as recorded
-in the power table, rather than the achieved synthesis period used in the area
-plot.
+| Revision | Change | Faster / 13, median Δ | 500 MHz power Δ: mixed / MAC |
+|---|---|---:|---:|
+| V1 | Branch conditions from the register value and forwarded EX flags in parallel; redirect comparison and exception-vector logic restructured | **13, −149.3 ps** | 0.0% / +0.1% |
+| V2 | Predicted address compared with three candidate targets in parallel | 9, −21.0 ps | +0.2% / −0.2% |
+| V3 | Sign/zero bits stored beside each register, removing zero detection from branch resolution | 9, −23.7 ps | **+2.1% / +2.5%** |
+| V4 | BTB update registered; its alignment guards and invalidation removed | 7, −2.0 ps | +0.8% / −0.2% |
+| V5 | Special-register index guards moved out of the exception priority logic | 8, −12.5 ps | +1.0% / +0.9% |
+| V6 | EX and MEM forwarding requests made independent | 9, −13.3 ps | −0.9% / −1.1% |
+| V7 | V3 plus V6's forwarding edit, without V4 and V5 | 2, +16.0 ps | −2.6% / 0.0% |
 
-Frontier markers retain their version colors. Exact version and synthesis-
-constraint ownership is listed in
-[`data/pareto_points.csv`](data/pareto_points.csv). The complete constraint
-tables, adjacent-revision deltas and synthesis-script comparison are in
-**[`analysis/README.md`](analysis/README.md)**.
+V1 is the only consistent single-step gain; a 9/13 split occurs by chance
+about one time in four. V4–V6 together are faster than V3 at 11/13 points at
+nearly the same power, and V7 shows that V6's edit alone does not give that
+gain. V3's stored flags are the only change that costs noticeable power. The
+reasoning behind every revision is in [`doc/revisions.md`](doc/revisions.md).
+
+![Area versus achieved period for all revisions](analysis/figures/03_area_latency_pareto_all_versions.svg)
+
+Per-constraint ranks, adjacent deltas, power against period and the
+comparison of the two synthesis scripts are in
+[`analysis/README.md`](analysis/README.md).
 
 ## Verification
 
-Archived assembly-test results are checked against the software reference
-model's final memory images. The programs exercise:
+24 directed assembly programs run on the RTL and their final data memory is
+compared word for word with a software reference model. Every synthesized
+netlist of every version also runs the suite at gate level, zero-delay at its
+achieved period, and passes. [`verification/`](verification/) has the
+programs, the archived results, the coverage map and the two known
+I-cache-mode mismatches.
 
-- integer arithmetic, logical operations, shifts, comparisons and immediate forms;
-- signed and unsigned multiplication, dependencies and overlapping execution;
-- EX/MEM forwarding, register-file bypassing, load-use stalls and scoreboarding;
-- conditional branches, jumps, links and architecturally visible redirects;
-- word, byte and half-word loads/stores, sign extension and alignment handling;
-- traps, illegal instructions, special registers, exception entry and return;
-- mixed integration programs combining control flow, memory and multiplication.
+## Repository map
 
-The detailed instruction-to-test mapping is in
-[`verification/CHECKLIST.md`](verification/CHECKLIST.md).
+- [`doc/`](doc/) — architecture, revision record and methodology.
+- [`schematics/`](schematics/) — editable and publication-ready architecture sheets.
+- [`analysis/`](analysis/) — the full synthesis comparison and its figures.
+- [`verification/`](verification/) — assembly tests and archived RTL results.
+- [`evidence/`](evidence/) — synthesis configuration and reports, power tables, gate-level and per-version RTL results.
+- [`data/`](data/) — validated run-level and derived tables.
+- [`scripts/`](scripts/) — extraction, summary, verification and plotting.
 
-The archived gate-level functional regression reports `pass` for all eight
-versions at all 21 tuned-script synthesis points, with zero reported failures.
-Per-test verdicts and the documented skip are described in the
-[power evidence notes](evidence/power/methodology/README.md); these results do not establish
-post-layout timing closure.
-
-## Rebuilding the published analysis
-
-Install the plotting dependency and run:
+The tables and figures rebuild from the archived evidence:
 
 ```text
 python -m pip install -r requirements.txt
@@ -175,31 +112,14 @@ python scripts/check_verification.py
 python scripts/plot_results.py
 ```
 
-The commands rebuild the synthesis tables, analysis summaries and figures,
-and check the archived verification results. They do not
-resynthesize or simulate the processor because the RTL and proprietary EDA
-environment are not part of the public repository. See
-[`doc/methodology.md`](doc/methodology.md) for metric definitions.
+Resynthesis and simulation need the withheld RTL and the original EDA tools.
+Metric definitions are in [`doc/methodology.md`](doc/methodology.md).
 
-## Repository map
+## Next work
 
-- [`schematics/`](schematics/) — editable and publication-ready architecture sheets.
-- [`verification/`](verification/) — assembly tests and archived verification results.
-- [`analysis/`](analysis/) — complete synthesis comparison and figures.
-- [`evidence/`](evidence/) — synthesis configuration, timing/QoR reports and power tables.
-- [`data/`](data/) — validated run-level and derived descriptive tables.
-- [`scripts/`](scripts/) — extraction, summarization, verification and plotting tools.
-
-## Next work planned
-
-- Instrument the private HDL testbench with passive counters for total and
-  retired cycles, stalls, pipeline flushes, branch predictions and
-  mispredictions, forwarding selections, memory waits, and multiplier
-  activity. Export per-test CSV summaries and selected waveform evidence
-  without changing the synthesized processor.
-- Run the existing assembly suite and a small set of representative kernels
-  through the instrumented testbench to report CPI and event counts alongside
-  the existing functional results.
+- Add event counters to the testbench (stalls, flushes, predictions and
+  mispredictions, forwarding selections, multiplier activity) to explain the
+  cycle counts already reported.
 - Add a dedicated write-back schematic and a V7-specific schematic delta.
-- Add place-and-route, extracted parasitics and multi-corner timing.
-- Re-run activity-based power analysis after layout.
+- Add place-and-route, extracted parasitics and multi-corner timing, then
+  re-run the activity-based power analysis after layout.

@@ -1,77 +1,61 @@
 # Verification archive
 
-This directory preserves the assembly stimuli, generated program images,
-reference results, archived RTL results, regression definitions and original
-simulation scripts used for the DLX verification campaign.
-
-The complete RTL, testbench and reference-model sources are not published
-because of university obligations. The archived evidence can be inspected and
-checked publicly; rerunning the HDL simulations requires the private source and
-the original Questa/ModelSim environment.
-
-## Included material
+The assembly programs, their generated images, the reference results, the
+archived V7 RTL results and the original regression scripts. The RTL,
+testbench and reference-model sources are withheld, so the HDL simulations
+cannot be rerun from here, but every archived result can be checked.
 
 ```text
 verification/
-  CHECKLIST.md          instruction and feature coverage
-  scripts/              archived assembly and regression flow
-  tests/
-    <test name>/
-      *.asm             assembly stimulus
-      *.list / *.bin    assembler outputs
-      *_imem.txt        instruction image
-      *_dmem_init.txt   initial data image
-      *_dmem_golden.txt reference final state
-      *_dmem_rtl*.txt   archived RTL final state
+  CHECKLIST.md          instruction and feature coverage, test by test
+  scripts/              the original assembly and regression flow
+  tests/<test name>/
+    *.asm               assembly program
+    *.list              assembler listing
+    *_imem.txt          instruction image
+    *_dmem_init.txt     initial data image
+    *_dmem_golden.txt   reference final data memory
+    *_dmem_rtl*.txt     archived RTL final data memory, per memory mode
 ```
 
-## Verification method
+## Method
 
-Each directed program follows the same flow:
-
-1. Assemble the program and create instruction/data initialization images.
-2. Execute it with the software reference model.
-3. Simulate the RTL with the same program and memory configuration.
-4. Compare the final data-memory image against the reference output.
-
-The comparison checks stored words. It does not by itself measure cycle counts,
-stall events or branch-predictor accuracy. Therefore, testbench modification for counting total cycles, stalls, pipeline flushes, branch predictions and etc is required and is planned for the future work.
-
-## Covered behavior
-
-The suite exercises:
+Each program is assembled, executed by the software reference model, and run
+on the RTL with the same images; the final data memory of the RTL must equal
+the reference word for word. The 24 programs cover:
 
 - integer arithmetic, logic, shifts and signed/unsigned comparisons;
-- immediate extension and architectural-zero behavior;
+- immediate extension and architectural-zero behaviour;
 - pipelined multiplication, dependencies and overlapping execution;
 - forwarding, load-use stalls, store-data forwarding and scoreboarding;
-- conditional branches, jumps, links and visible redirect outcomes;
+- conditional branches, jumps, links and branch-prediction recovery;
 - byte, half-word and word loads/stores with alignment handling;
 - traps, illegal instructions, special registers and exception return;
-- mixed integration programs and switching-activity workloads.
+- mixed programs, including two switching-activity workloads
+  (`20_power_bench`, `24_mac_loops`).
 
-[`CHECKLIST.md`](CHECKLIST.md) maps directed test intentions and distinguishes
-stored-result checks from properties that still require cycle-level evidence.
+[`CHECKLIST.md`](CHECKLIST.md) maps each feature to its program and marks the
+properties that a final memory image cannot show.
 
-## Checking the archived results
+Every run also reports its cycle count, from the end of reset to the program's
+final self-loop. All eight versions give identical counts for every program
+([`../data/cycle_counts.csv`](../data/cycle_counts.csv)); the per-version RTL
+results are in [`../evidence/rtl/`](../evidence/rtl/), and the gate-level
+regression of every synthesized netlist in
+[`../evidence/power/`](../evidence/power/).
 
-From the repository root:
+## Known mismatches
+
+`11_btb_predictor` and `16_jal_return` are archived as expected mismatches in
+I-cache mode (`cf`): a PC redirect that arrives during an instruction-cache
+refill fetches the wrong line in the testbench's cache model.
+
+## Checking the archive
 
 ```text
 python scripts/check_verification.py
 ```
 
-The checker reads the declared regression expectations and compares the archived
-RTL outputs with their corresponding reference outputs. It does not invoke an
-HDL simulator.
-
-The separate post-synthesis gate-level regression results for V0–V7 are under
-[`../evidence/power/`](../evidence/power/), with per-test verdicts and limits
-described in the [power evidence notes](../evidence/power/methodology/README.md).
-
-## Archived simulation flow
-
-The Tcl and do-files under `scripts/` document the original regression flow,
-including per-test runtime, memory-model selection and result naming. They are
-retained as methodology evidence but are not a self-contained public simulation
-environment without the withheld design and testbench sources.
+It compares every archived RTL image with its reference image, confirms the
+two expected mismatches, and rebuilds the cycle-count table. It does not run
+an HDL simulator.
