@@ -97,7 +97,7 @@ alt_next:
 
 ;---- D9: one jalr instruction, two different targets ------------------------
 ;  The BTB records a JR/JALR target too.  The second pass must not jump to
-;  the target cached from the first.
+;  the target stored from the first.
         addi r24, r0, jt_a
         addi r25, r0, 2
 jrl:    jalr r24

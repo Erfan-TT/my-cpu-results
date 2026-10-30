@@ -21,9 +21,7 @@
 # analysed into the same work library, so whichever came last silently replaced
 # the other and half the tree was dead code.  Do not reintroduce a second copy.
 #
-# All VHDL-2008. The provided ROCACHE_PKG / RWCACHE_PKG use the Synopsys
-# std_logic_arith and std_logic_misc packages; ModelSim ships those in its
-# ieee library, so no extra switch is needed.
+# All VHDL-2008.
 #=============================================================================
 
 if {[file exists ../work]} { vdel -all -lib work }
@@ -40,8 +38,6 @@ set FILES {
     ../../DataPath/execute/boothmul_DLX/packages/dadda_types_pkg.vhd
     ../../DataPath/execute/boothmul_DLX/packages/wallace_math_pkg.vhd
     ../../DataPath/execute/boothmul_DLX/packages/dadda_math_pkg.vhd
-    ../../sim/TB_packages/rocache.vhd
-    ../../sim/TB_packages/rwcache.vhd
     ../../DataPath/execute/adder/common/iv.vhd
     ../../DataPath/execute/adder/common/nd2.vhd
     ../../DataPath/execute/adder/common/fa.vhd
@@ -79,6 +75,7 @@ set FILES {
     ../../DataPath/execute/enable_generator.vhd
     ../../DataPath/execute/execute.vhd
     ../../DataPath/fetch/data_reg.vhd
+    ../../DataPath/fetch/latching_for_btb_update.vhd
     ../../DataPath/fetch/btb.vhd
     ../../DataPath/fetch/fetch.vhd
     ../../DataPath/mem_stage/byte_load.vhd
@@ -98,9 +95,6 @@ set FILES {
     ../../ControlPath/pipeline_control.vhd
     ../../ControlPath/ControlPath.vhd
     ../../DLX.vhd
-    ../../sim/TB_romem/rocache.vhd
-    ../../sim/TB_romem/romem.vhd
-    ../../sim/TB_rwmem/rwcache.vhd
     ../../sim/TB_rwmem/rwmem.vhd
     ../../sim/simple_memories/simple_dram.vhd
     ../../sim/simple_memories/simple_iram.vhd

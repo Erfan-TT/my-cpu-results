@@ -49,6 +49,37 @@ them; it does not change the processor.
 [`../data/cycle_counts.csv`](../data/cycle_counts.csv) joins the RTL counts of
 every version.
 
+## Waveform checks
+
+A final memory image cannot show a prediction or a stall. For those items
+(BTB miss and hit, the 2-bit counter's hysteresis, the scoreboard clear on an
+exception commit) two programs are simulated with a VCD, and
+`verification/scripts/check_timing.py` samples each signal once per cycle,
+just before the rising edge: the BTB's `take` while a branch is fetched is its
+prediction, `flush` while it is in decode is a misprediction. The expected
+sequence is written in the test's header and compared trip by trip.
+
+## Physical design and post-layout power
+
+The fastest V6 netlist is placed and routed with Innovus at the period it
+achieved in synthesis, using the synthesis SDC (Design-Compiler-only lines
+removed, an input delay added for the reset). The post-layout result is again
+expressed as `clock − worst setup slack`, at the typical corner with the same
+0.05 ns uncertainty as synthesis; the slow and fast corners are reported, not
+optimised.
+
+The routed netlist is simulated with the SDF written from the extracted
+parasitics, timing checks active, at its post-layout achieved period rounded
+up to 10 ps. As in synthesis, the simulation's SAIF covers one run of the
+program and is read back by the power analysis, here Innovus on the extracted
+design. Because the routed netlist runs at a shorter period, it is compared
+with synthesis by energy per run, not power.
+
+The zero-delay gate-level simulations of the synthesis netlists take one or
+two cycles more or less than the RTL on four programs; the post-layout
+simulation, with real delays, takes exactly the RTL counts on every program,
+so that difference is attributed to the zero-delay simulation.
+
 ## Comparisons
 
 - Timing ranks and pairwise counts use identical requested constraints.

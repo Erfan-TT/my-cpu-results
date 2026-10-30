@@ -1,0 +1,81 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  26_btb_hysteresis -- BTB allocation, hits and the 2-bit counter
+    3                      ;=============================================================================
+    4                      ;  Checklist: D3 (cold miss), D4 (hit once the row is allocated), D12 (one
+    5                      ;  not-taken does not flip a saturated prediction), and the other half of the
+    6                      ;  same rule: from the weak state one not-taken does flip it.
+    7                      ;
+    8                      ;  btb.vhd allocates a conditional branch only when it is taken, with the
+    9                      ;  counter at "10" (weakly taken).  Taken counts up, not-taken counts down,
+   10                      ;  both saturating, and the counter MSB is the prediction.
+   11                      ;
+   12                      ;  Branch hb (phase 1) is taken on every trip except trip 4 of 8:
+   13                      ;     trip              1    2    3    4    5    6    7    8
+   14                      ;     counter before    -    10   11   11   10   11   11   11
+   15                      ;     predicted         NT   T    T    T    T    T    T    T
+   16                      ;     outcome           T    T    T    NT   T    T    T    T
+   17                      ;     mispredict        x              x
+   18                      ;  Trip 1 is the cold miss, trips 2-3 the hits, trip 5 the hysteresis check:
+   19                      ;  still predicted taken although trip 4 was not taken.
+   20                      ;
+   21                      ;  Branch wb (phase 2) goes taken, not taken, taken:
+   22                      ;     counter before    -    10   01
+   23                      ;     predicted         NT   T    NT
+   24                      ;     outcome           T    NT   T
+   25                      ;     mispredict        x    x    x
+   26                      ;
+   27                      ;  A data dump cannot see a prediction, only which arm each trip took.  The
+   28                      ;  predictions are read off the VCD by check_timing.py: take_t while the
+   29                      ;  branch is fetched, flush_t while it is in ID.  The producers of r3 sit
+   30                      ;  three instructions ahead of each branch, so no operand stall blurs that.
+   31                      ;
+   32                      ;  hb, wb and the loop branches are all inside the first 64 bytes of their
+   33                      ;  phase, so none of them shares a BTB row (index pc[5:2]) with another
+   34                      ;  branch that runs between two of its trips.
+   35                      ;
+   36                      ;  Result map:
+   37                      ;    0 phase 1 taken trips (7)       1 phase 1 not-taken trips (1)
+   38                      ;    2 phase 2 taken trips (2)       3 phase 2 not-taken trips (1)
+   39                      ;=============================================================================
+   40  00000000          	
+   41  00000000          	.text
+   42  00000000  20010008	addi r1, r0, 8              ; trips
+   43  00000004  00001020	add  r2, r0, r0             ; trip number
+   44  00000008  00005020	add  r10, r0, r0            ; taken
+   45  0000000c  00005820	add  r11, r0, r0            ; not taken
+   46  00000010          	p1:
+   47  00000010  20420001	addi r2, r2, 1
+   48  00000014  28430004	subi r3, r2, 4              ; zero only on trip 4
+   49  00000018  54000000	nop
+   50  0000001c  54000000	nop
+   51  00000020  14600008	hb:     bnez r3, p1_t               ; taken except on trip 4
+   52  00000024  216b0001	addi r11, r11, 1
+   53  00000028  08000004	j    p1_next
+   54  0000002c  214a0001	p1_t:   addi r10, r10, 1
+   55  00000030          	p1_next:
+   56  00000030  28210001	subi r1, r1, 1
+   57  00000034  1420ffd8	bnez r1, p1
+   58  00000038  ac0a0000	sw   0(r0), r10             ; 7
+   59  0000003c  ac0b0004	sw   4(r0), r11             ; 1
+   60  00000040          	
+   61  00000040  20010003	addi r1, r0, 3
+   62  00000044  00001020	add  r2, r0, r0
+   63  00000048  00006020	add  r12, r0, r0
+   64  0000004c  00006820	add  r13, r0, r0
+   65  00000050          	p2:
+   66  00000050  20420001	addi r2, r2, 1
+   67  00000054  30430001	andi r3, r2, 1              ; 1 on odd trips
+   68  00000058  54000000	nop
+   69  0000005c  54000000	nop
+   70  00000060  14600008	wb:     bnez r3, p2_t               ; taken, not taken, taken
+   71  00000064  21ad0001	addi r13, r13, 1
+   72  00000068  08000004	j    p2_next
+   73  0000006c  218c0001	p2_t:   addi r12, r12, 1
+   74  00000070          	p2_next:
+   75  00000070  28210001	subi r1, r1, 1
+   76  00000074  1420ffd8	bnez r1, p2
+   77  00000078  ac0c0008	sw   8(r0), r12             ; 2
+   78  0000007c  ac0d000c	sw   12(r0), r13            ; 1
+   79  00000080          	
+   80  00000080  0bfffffc	end:    j end

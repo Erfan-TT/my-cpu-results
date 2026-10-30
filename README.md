@@ -4,15 +4,22 @@ A 32-bit DLX processor in VHDL, with branch prediction, forwarding, a pipelined
 Booth/Dadda multiplier, byte/half-word/word memory operations and exceptions,
 and a study of eight RTL revisions (V0–V7) that shorten its clock period. The
 repository holds the schematics, 336 Design Compiler runs, workload-annotated
-power estimates, RTL and gate-level regression results, and the scripts that
-rebuild every table and figure. The RTL itself is withheld because of
-university obligations; it can be shared privately where permitted.
+power estimates, RTL, gate-level and post-layout regression results, the
+place and route of the final design, and the scripts that rebuild every table
+and figure. The RTL itself is withheld because of university obligations; it
+can be shared privately where permitted.
+
+The final design, V6, reaches **1.41 ns (709 MHz) after synthesis and
+1.27 ns (786 MHz) after place and route** in Nangate 45 nm, on 27,304 µm² of
+cells, with no DRC, connectivity or antenna violations.
 
 ![Five-stage datapath and stage interfaces](schematics/02_datapath.svg)
 
 The pipeline, forwarding network, branch prediction, memory system and
 exceptions are described in [`doc/architecture.md`](doc/architecture.md), with
-stage-level sheets in [`schematics/`](schematics/).
+stage-level and component sheets (BTB, branch correction, decision unit,
+multiplier, P4 adder, hazard detection, forwarding) in
+[`schematics/`](schematics/).
 
 ## Results
 
@@ -83,19 +90,47 @@ Per-constraint ranks, adjacent deltas, power against period and the
 comparison of the two synthesis scripts are in
 [`analysis/README.md`](analysis/README.md).
 
+## Physical design
+
+The fastest V6 netlist was placed and routed with Cadence Innovus at its
+synthesis period, then simulated with its extracted delays and analysed for
+power with the activity of that simulation.
+
+![Routed V6 layout](physical_design/figures/layout_full.png)
+
+| | Synthesis | After place and route |
+|---|---:|---:|
+| Achieved period | 1.4096 ns (709 MHz) | **1.2726 ns (786 MHz)** |
+| Cell area | 27,888 µm² | 27,304 µm² |
+| Energy per run, mixed / MAC | 43.5 / 74.2 nJ | 49.5 / 84.4 nJ |
+| Hold slack, typical corner | — | +0.055 ns |
+| DRC / connectivity / antenna | — | 0 / 0 / 0 |
+| Tests passing with SDF and timing checks | 24 / 24 (zero delay) | 24 / 24 |
+
+The real wires make the layout 10 % faster than the wire-load estimate of
+synthesis; the clock tree, the real wire capacitance and the glitches add
+14 % energy per run. The routed netlist takes exactly the RTL cycle count in
+every program. Flow, clock tree, placement, corners and the reports are in
+[`physical_design/`](physical_design/).
+
 ## Verification
 
-24 directed assembly programs run on the RTL and their final data memory is
-compared word for word with a software reference model. Every synthesized
-netlist of every version also runs the suite at gate level, zero-delay at its
-achieved period, and passes. [`verification/`](verification/) has the
-programs, the archived results, the coverage map and the two known
-I-cache-mode mismatches.
+27 directed assembly programs run on the RTL and their final data memory is
+compared word for word with a software reference model, with a zero-latency
+and a two-cycle data memory. A coverage checklist maps 73 features to the
+programs; the four that only change timing (BTB miss and hit, the 2-bit
+counter's hysteresis, the scoreboard clear on an exception) are checked cycle
+by cycle on the waveforms. Every synthesized netlist of every version also
+passes tests 01–24 at gate level, zero-delay at its achieved period, and the
+routed V6 netlist passes them with extracted delays.
+[`verification/`](verification/) has the programs, the archived results, the
+checklist and the waveform checks.
 
 ## Repository map
 
 - [`doc/`](doc/) — architecture, revision record and methodology.
 - [`schematics/`](schematics/) — editable and publication-ready architecture sheets.
+- [`physical_design/`](physical_design/) — place-and-route flow, reports, layout pictures.
 - [`analysis/`](analysis/) — the full synthesis comparison and its figures.
 - [`verification/`](verification/) — assembly tests and archived RTL results.
 - [`evidence/`](evidence/) — synthesis configuration and reports, power tables, gate-level and per-version RTL results.
@@ -117,9 +152,11 @@ Metric definitions are in [`doc/methodology.md`](doc/methodology.md).
 
 ## Next work
 
-- Add event counters to the testbench (stalls, flushes, predictions and
-  mispredictions, forwarding selections, multiplier activity) to explain the
-  cycle counts already reported.
-- Add a dedicated write-back schematic and a V7-specific schematic delta.
-- Add place-and-route, extracted parasitics and multi-corner timing, then
-  re-run the activity-based power analysis after layout.
+- Close hold at the fast corner as well (11 paths miss it by at most 6 ps),
+  and analyse IR drop and electromigration on the power grid.
+- Add event counters to the testbench (stalls, flushes, predictions,
+  forwarding selections, multiplier activity) to explain every cycle count,
+  extending the waveform checks to all programs.
+- Redraw the remaining stage sheets from V6 (they show the V0 structure).
+- Add an external interrupt input, which would use the status bits that are
+  already in place.

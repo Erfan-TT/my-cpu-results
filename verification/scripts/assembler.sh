@@ -6,7 +6,7 @@
 #
 # With no image paths given, both land next to the .asm under the names the
 # rest of the flow expects:
-#       <dir>/<name>_imem.txt        instruction ROM   (romem / simple_iram)
+#       <dir>/<name>_imem.txt        instruction ROM   (simple_iram)
 #       <dir>/<name>_dmem_init.txt   initial data RAM  (rwmem / simple_dram)
 # plus <name>.bin and <name>.list for reference.
 #

@@ -1,0 +1,53 @@
+#
+# Version 1.1
+#
+##  Design import settings (Nangate 45nm), read by innovus_script.tcl.
+##  Same as the boothmul flow (boothmul.globals), for the DLX netlists.
+##  Paths are relative to the run directory physical_design/runs/<name>/.
+
+##  netlist written by Design Compiler, chosen by PD_TAG (1p0 = 1.0 ns run)
+set init_verilog "../../../syn/netlist/DLX_${PD_TAG}.v"
+set init_design_netlisttype {Verilog}
+set init_design_settop {1}
+
+##  the top level module
+set init_top_cell {DLX}
+
+set defHierChar {/}
+set delaycal_input_transition_delay {0.1ps}
+set fpIsMaxIoHeight 0
+
+
+##  physical view of the library: one LEF with technology (layers, vias,
+##  site) and cells (size, pins, obstructions)
+set LEF_DIR /eda/dk/nangate45/lef
+set LEF_list [list ${LEF_DIR}/NangateOpenCellLibrary.lef]
+
+set init_lef_file "${LEF_list}"
+
+##  timing view of the library: one liberty file per PVT corner
+set LIB_DIR /eda/dk/nangate45/liberty
+set MyTimingLibNom  ${LIB_DIR}/NangateOpenCellLibrary_typical_ecsm_nowlm.lib
+set MyTimingLibSlow ${LIB_DIR}/NangateOpenCellLibrary_slow_ecsm.lib
+set MyTimingLibFast ${LIB_DIR}/NangateOpenCellLibrary_fast_ecsm.lib
+
+##  capacitance table, used by the extractor to turn wires into R and C
+set MycapTable $LEF_DIR/captables/NCSU_FreePDK_45nm.capTbl
+
+
+##  floorplan related defaults (the real floorplan is made by floorPlan in
+##  the script)
+set fp_core_cntl {aspect}
+set fp_aspect_ratio {1.0000}
+set extract_shrink_factor {1.0}
+set init_assign_buffer {0}
+
+##  names of the power nets. The cells have pins VDD and VSS, they are
+##  connected to these nets with globalNetConnect in the script
+set init_pwr_net {vdd}
+set init_gnd_net {gnd}
+
+##  MMMC file: libraries, RC corners, constraints and analysis views
+set init_mmmc_file {../../scripts/Default.view}
+set init_oa_search_lib {}
+set lsgOCPGainMult 1.000000

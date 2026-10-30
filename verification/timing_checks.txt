@@ -1,0 +1,39 @@
+
+26_btb_hysteresis  (../tests/26_btb_hysteresis/btb_hysteresis.vcd)
+  hb (D3, D4, D12) at 0x20
+    trip  cycle  predicted  mispredict
+       1     10         NT         yes
+       2     20         T           no
+       3     29         T           no
+       4     38         T          yes
+       5     50         T           no
+       6     59         T           no
+       7     68         T           no
+       8     77         T           no
+    ok    hb (D3, D4, D12): 8 executions (saw 8)
+    ok    hb (D3, D4, D12) trip 1: predicted NT, mispredict yes
+    ok    hb (D3, D4, D12) trip 2: predicted T, mispredict no
+    ok    hb (D3, D4, D12) trip 3: predicted T, mispredict no
+    ok    hb (D3, D4, D12) trip 4: predicted T, mispredict yes
+    ok    hb (D3, D4, D12) trip 5: predicted T, mispredict no
+    ok    hb (D3, D4, D12) trip 6: predicted T, mispredict no
+    ok    hb (D3, D4, D12) trip 7: predicted T, mispredict no
+    ok    hb (D3, D4, D12) trip 8: predicted T, mispredict no
+  wb (weak state) at 0x60
+    trip  cycle  predicted  mispredict
+       1     93         NT         yes
+       2    103         T          yes
+       3    115         NT         yes
+    ok    wb (weak state): 3 executions (saw 3)
+    ok    wb (weak state) trip 1: predicted NT, mispredict yes
+    ok    wb (weak state) trip 2: predicted T, mispredict yes
+    ok    wb (weak state) trip 3: predicted NT, mispredict yes
+
+28_nested_exception  (../tests/28_nested_exception/nested_exception.vcd)
+  exception commits at cycles [14, 28, 44, 54]
+    ok    trap vector entry 0x14 executed once (saw 1)
+  trap commit at cycle 14, vector entry in ID at cycle 16 for 1 cycle(s)
+    ok    F12: no hazard stall on the vector entry (scoreboard flushed on commit)
+    ok    F12: the vector entry spends one cycle in ID
+
+all timing checks passed

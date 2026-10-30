@@ -13,6 +13,7 @@
 - `rtl/V0` … `rtl/V7` — every version's RTL regression: verdict and cycle
   count per test and memory mode.
 
-The assembly programs and the archived V7 RTL memory images are under
-[`../verification/`](../verification/). Gate-level netlists and SDF files are
-not included.
+The assembly programs and the archived V6 RTL memory images are under
+[`../verification/`](../verification/). The place-and-route scripts and
+reports of the V6 layout are under [`../physical_design/`](../physical_design/).
+Gate-level and routed netlists, SDF, SPEF and DEF files are not included.

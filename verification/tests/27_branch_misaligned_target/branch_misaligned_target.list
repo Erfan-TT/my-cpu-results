@@ -1,0 +1,101 @@
+ line   address	contents
+    1                      ;=============================================================================
+    2                      ;  27_branch_misaligned_target -- a conditional branch with a misaligned target
+    3                      ;=============================================================================
+    4                      ;  Checklist F10.  illegal_detector checks the target in ID and only when the
+    5                      ;  branch is taken: a taken branch to a misaligned target raises
+    6                      ;  INST_ADDR_MISALIGNED (cause 2, TVAL = target), a not-taken one does nothing.
+    7                      ;
+    8                      ;  Part 1: four branches of different kinds with misaligned targets, none of
+    9                      ;  them taken.  None may fault.
+   10                      ;
+   11                      ;  Part 2: one bnez in a loop of four trips, taken (and so faulting) only on
+   12                      ;  trip 2.  The handler logs CAUSE, TVAL and IAR and returns past the branch.
+   13                      ;  The faulting trip may leave the branch in the BTB with its target
+   14                      ;  truncated to bits 31:2, so trips 3 and 4 can be predicted taken towards
+   15                      ;  'poison'; that misprediction has to be repaired in ID, not raised and not
+   16                      ;  retired.
+   17                      ;
+   18                      ;  'poison' stores a sentinel: word 10 comes back non-zero only if a fetch
+   19                      ;  from the truncated target ever retires.
+   20                      ;
+   21                      ;  Result map:
+   22                      ;    0 part 1 reached its end (1)    1 loop trips completed (4)
+   23                      ;    2 exceptions taken (1)          3 CAUSE (2)
+   24                      ;    4 TVAL (poison+2)               5 IAR (address of mb)
+   25                      ;   10 sentinel, must stay 0        11 unexpected cause, must stay 0
+   26                      ;=============================================================================
+   27  00000000          	
+   28  00000000          	.text
+   29  00000000  20010010	addi   r1, r0, vec_table
+   30  00000004  00200030	movi2s VBR, r1
+   31  00000008  08000014	j      main
+   32  0000000c  54000000	nop                         ; pad: VBR must be 16-byte aligned
+   33  00000010          	
+   34  00000010          	vec_table:
+   35  00000010  080000ac	j  other_handler            ; cause 0, illegal
+   36  00000014  080000a8	j  other_handler            ; cause 1, trap
+   37  00000018  0800007c	j  inst_mis_handler         ; cause 2, misaligned target
+   38  0000001c  080000a0	j  other_handler            ; cause 3, misaligned data
+   39  00000020          	
+   40  00000020          	main:
+   41  00000020  00003820	add  r7, r0, r0             ; exceptions taken
+   42  00000024  20010005	addi r1, r0, 5
+   43  00000028  2002fffb	addi r2, r0, -5
+   44  0000002c  54000000	nop
+   45  00000030  54000000	nop
+   46  00000034          	
+   47                      ;---- part 1: not taken, misaligned target, no exception ----------------------
+   48  00000034  1020004d	beqz r1, poison+1
+   49  00000038  1400004a	bnez r0, poison+2
+   50  0000003c  04200047	bltz r1, poison+3
+   51  00000040  1c400042	bgtz r2, poison+2
+   52  00000044  20140001	addi r20, r0, 1
+   53  00000048  ac140000	sw   0(r0), r20             ; 1
+   54  0000004c          	
+   55                      ;---- part 2: the same branch, taken once ---------------------------------------
+   56  0000004c  20050004	addi r5, r0, 4              ; trips
+   57  00000050  00001020	add  r2, r0, r0             ; trip number
+   58  00000054  00003020	add  r6, r0, r0             ; trips completed
+   59  00000058          	loop:
+   60  00000058  20420001	addi r2, r2, 1
+   61  0000005c  60440002	seqi r4, r2, 2              ; 1 only on trip 2
+   62  00000060  54000000	nop
+   63  00000064  54000000	nop
+   64  00000068  1480001a	mb:     bnez r4, poison+2           ; faults on trip 2 only
+   65  0000006c  20c60001	addi r6, r6, 1              ; the handler returns here, IAR+4
+   66  00000070  28a50001	subi r5, r5, 1
+   67  00000074  14a0ffe0	bnez r5, loop
+   68  00000078          	
+   69  00000078  ac060004	sw   4(r0), r6              ; 4
+   70  0000007c  ac070008	sw   8(r0), r7              ; 1
+   71  00000080  08000010	j    end
+   72  00000084          	
+   73                      ;  Reached only if a fetch from the truncated target ever retires.
+   74  00000084          	poison:
+   75  00000084  3c1400ba	lhi  r20, 0x00BA
+   76  00000088  3694dbad	ori  r20, r20, 0xDBAD
+   77  0000008c  ac140028	sw   40(r0), r20
+   78  00000090  08000000	j    end
+   79  00000094          	
+   80  00000094  0bfffffc	end:    j end
+   81  00000098          	
+   82  00000098          	inst_mis_handler:
+   83  00000098  20e70001	addi r7, r7, 1
+   84  0000009c  00025831	movs2i r11, CAUSE
+   85  000000a0  ac0b000c	sw   12(r0), r11            ; 2
+   86  000000a4  00035831	movs2i r11, TVAL
+   87  000000a8  ac0b0010	sw   16(r0), r11            ; poison+2
+   88  000000ac  00014031	movs2i r8, IAR
+   89  000000b0  ac080014	sw   20(r0), r8             ; mb
+   90  000000b4  21080004	addi r8, r8, 4              ; step over the faulting branch
+   91  000000b8  01000830	movi2s IAR, r8
+   92  000000bc  40000000	rfe
+   93  000000c0          	
+   94  000000c0          	other_handler:
+   95  000000c0  200b03e7	addi r11, r0, 999
+   96  000000c4  ac0b002c	sw   44(r0), r11
+   97  000000c8  00014031	movs2i r8, IAR
+   98  000000cc  21080004	addi r8, r8, 4
+   99  000000d0  01000830	movi2s IAR, r8
+  100  000000d4  40000000	rfe

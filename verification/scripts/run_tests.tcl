@@ -52,16 +52,12 @@ if {$words ne "" && (![string is integer -strict $words] || $words < 1)} {
 set MODE_NAME {
     ff {simple_iram + simple_dram}
     fs {simple_iram + rwmem}
-    cf {rocache/romem + simple_dram}
-    cs {rocache/romem + rwmem}
 }
 
 proc mode_generics {mode} {
     switch -- $mode {
-        ff { return {false false} }
-        fs { return {false true}  }
-        cf { return {true  false} }
-        cs { return {true  true}  }
+        ff { return false }
+        fs { return true  }
         default { error "unknown mode '$mode'" }
     }
 }
@@ -178,7 +174,7 @@ foreach t $TESTS {
     }
 
     foreach mode $modes {
-        lassign [mode_generics $mode] ic sd
+        set sd [mode_generics $mode]
         set suffix [expr {$mode eq "ff" ? "" : "_$mode"}]
         set why ""
         if {[dict exists $expect $mode]} { set why [dict get $expect $mode] }
@@ -188,7 +184,6 @@ foreach t $TESTS {
         set ::t_name        $name
         set ::words         $w
         set ::runtime       $runtime
-        set ::use_icache    $ic
         set ::use_slow_dram $sd
         set ::out_suffix    $suffix
         set ::vcd_file      [expr {$vcd ? "${base}${suffix}.vcd" : ""}]

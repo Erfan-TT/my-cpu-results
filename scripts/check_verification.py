@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the archived V7 final-memory evidence against the declared status,
+"""Check the archived V6 final-memory evidence against the declared status,
 and tabulate the RTL cycle counts of every version."""
 
 from __future__ import annotations

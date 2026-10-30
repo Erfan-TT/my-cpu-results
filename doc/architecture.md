@@ -11,7 +11,8 @@ path is hardwired. Its main extensions beyond a basic pipeline are:
 - a pipelined Booth/Dadda multiplier with scoreboard tracking;
 - byte, half-word and word memory operations;
 - special registers and exception state;
-- optional handshaked instruction and data memory models.
+- a ready handshake on both memory interfaces (the data side is verified with
+  a zero-latency and a two-cycle memory model).
 
 The complete structural view is shown in the
 [`datapath schematic`](../schematics/02_datapath.svg), with detailed stage
@@ -43,8 +44,13 @@ Conditional branches and register-indirect jumps are resolved in
 decode, allowing incorrect predictions to be corrected before the instruction
 reaches execute, so a misprediction costs one cycle.
 
-The fetch structure and BTB are shown in
-[`03_fetch.svg`](../schematics/03_fetch.svg).
+From V4 on, the BTB update coming from decode is registered for one cycle
+(`latching_for_btb_update`), which takes the BTB write enable off the decode
+critical path; the instruction fetched next is never the same branch, so no
+prediction changes.
+
+The fetch structure is shown in [`03_fetch.svg`](../schematics/03_fetch.svg)
+and the BTB itself in [`03b_btb.svg`](../schematics/03b_btb.svg).
 
 ## Decode and register state
 
@@ -57,8 +63,16 @@ metadata is generated from the actual write-back value and participates in
 same-cycle write/read bypassing. It avoids recalculating the zero condition
 from the 32-bit register value during branch resolution.
 
+Branch correction computes the target with a P4 adder (or takes the register
+for `jr`/`jalr`), compares the prediction with all three candidate addresses
+in parallel and lets the decision select one mismatch bit. The decision unit
+evaluates the branch condition from the stored flags and from the forwarded
+ALU flags at the same time and picks one at the end.
+
 Decode details, branch correction and exception inputs are shown in
-[`05_decode.svg`](../schematics/05_decode.svg).
+[`05_decode.svg`](../schematics/05_decode.svg); branch correction and the
+decision unit in [`09_branch_correction.svg`](../schematics/09_branch_correction.svg)
+and [`09b_decision_unit.svg`](../schematics/09b_decision_unit.svg).
 
 ## Hazards and forwarding
 
@@ -76,8 +90,16 @@ load-use stall because the loaded value is not yet available. Branch and jump
 operands are checked separately because they are consumed in decode rather than
 execute.
 
+The hazard unit does not compare register numbers stage by stage: it keeps a
+2-bit counter per register (a scoreboard) set when an instruction issues —
+2 for a load or a multiply, 1 otherwise — and counting down each cycle, so the
+check in decode is a table lookup. The special registers have a scoreboard of
+their own, and both are cleared when an exception commits.
+
 The control pipeline, dependency checks and forwarding requests are shown in
-[`04_controlpath.svg`](../schematics/04_controlpath.svg).
+[`04_controlpath.svg`](../schematics/04_controlpath.svg), the scoreboards in
+[`13_hazard.svg`](../schematics/13_hazard.svg) and the forwarding selects in
+[`14_forwarding.svg`](../schematics/14_forwarding.svg).
 
 ## Execute and multiplication
 
@@ -91,8 +113,15 @@ internally pipelined, so independent instructions can continue through the main
 pipeline while a product is in flight. Scoreboard state tracks destination
 ownership and prevents dependent consumers from reading an unavailable result.
 
+The ALU, the branch target and the multiplier's final addition share one
+adder structure, the Pentium-4 sparse-tree adder: a
+carry tree that produces every fourth carry, and 4-bit carry-select blocks
+that compute both possible sums.
+
 The execute datapath is shown in
-[`06_execute.svg`](../schematics/06_execute.svg).
+[`06_execute.svg`](../schematics/06_execute.svg), the multiplier in
+[`06b_boothmul.svg`](../schematics/06b_boothmul.svg) and the adder in
+[`09p_p4.svg`](../schematics/09p_p4.svg).
 
 ## Memory system
 
@@ -108,8 +137,9 @@ half-word of the source value; the memory models merge sub-word stores with
 the unaffected bytes. Word and half-word alignment is checked before an
 architectural update is allowed.
 
-The verification environment provides direct and handshaked memory models for
-the separate instruction and data interfaces.
+The verification environment runs every program with a zero-latency data
+memory and the memory-heavy programs also with a two-cycle one; the
+instruction memory is zero-latency.
 
 Memory formatting, alignment and MEM/WB state are shown in
 [`07_memory.svg`](../schematics/07_memory.svg).

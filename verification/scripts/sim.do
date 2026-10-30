@@ -8,7 +8,6 @@
 #    t_name        base name of the .asm in it     e.g. alu_rtype
 #    words         TB_DLX memory_size generic
 #    runtime       argument to "run"
-#    use_icache    true -> rocache + romem, false -> simple_iram
 #    use_slow_dram true -> rwmem (2-cycle), false -> simple_dram
 #    out_suffix    appended to the dump name, "" for the default mode
 #    vcd_file      path for a VCD, or "" for none
@@ -27,7 +26,6 @@ if {![info exists t_dir]}         { set t_dir   01_alu_rtype }
 if {![info exists t_name]}        { set t_name  alu_rtype }
 if {![info exists words]}         { set words   512 }
 if {![info exists runtime]}       { set runtime {20 us} }
-if {![info exists use_icache]}    { set use_icache    false }
 if {![info exists use_slow_dram]} { set use_slow_dram false }
 if {![info exists out_suffix]}    { set out_suffix "" }
 if {![info exists vcd_file]}      { set vcd_file "" }
@@ -59,7 +57,6 @@ set end_pc [find_end_pc $imem]
 #  -t ps: the testbench clock is a generic in picoseconds, and ModelSim
 #  defaults to a 1 ns resolution, at which a "ps" literal rounds to zero.
 vsim -quiet -t ps \
-     -gUSE_ICACHE=$use_icache \
      -gUSE_SLOW_DRAM=$use_slow_dram \
      -gmemory_size=$words \
      -gIRAM_FILE=$imem \
