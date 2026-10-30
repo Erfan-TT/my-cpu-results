@@ -3,10 +3,11 @@
 V0 is the baseline. Each revision below states what changed, why, and what
 the change did to achieved period, area and power. Achieved period is
 `requested constraint − worst slack`: the period at which that netlist meets
-timing. No revision changes the number of cycles a program takes: all 24 test
-programs run in identical cycle counts on every version
-([`../data/cycle_counts.csv`](../data/cycle_counts.csv)), so the period is the
-whole performance story.
+timing. The revisions leave the number of cycles a program takes unchanged,
+with one exception of one cycle (V4, below): 31 of the 32 test runs take
+identical cycle counts on every version
+([`../data/cycle_counts.csv`](../data/cycle_counts.csv)), including all the
+power workloads, so the period is the whole performance story.
 
 ## How to read the measurements
 
@@ -154,7 +155,12 @@ BTB with its target truncated to bits 31:2. Test
 `23_misaligned_jump_repeat` checks that the exception is still raised on
 every execution. Writing the BTB one cycle later does not change any
 prediction: the instruction fetched next is never the branch updating its
-row, and every test runs in the same number of cycles as on V3.
+row. The one cycle-count difference of the whole study comes from the removed
+invalidation: in `27_branch_misaligned_target`, a conditional branch that
+faulted on its misaligned target is now allocated in the BTB, so its next,
+not-taken execution is mispredicted once — 78 cycles from V4 on, 77 in V0–V3
+and in V7, which has no V4 changes. The result is unchanged; the program
+only exercises a corner that real code avoids.
 
 **Result:** across the 13 tight runs, the reported paths ending in the BTB
 fall from 133 in V3 to 95 in V4 (126 again in V7). Speed alone does not

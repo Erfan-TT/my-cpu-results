@@ -59,16 +59,20 @@ reads the VCDs of two programs cycle by cycle:
   register that a squashed load had marked busy, reaches decode without a
   stall: the scoreboard is cleared when an exception commits.
 
-Every check passes on V6 ([`timing_checks.txt`](timing_checks.txt)).
+Every check passes on all eight versions (V6 output:
+[`timing_checks.txt`](timing_checks.txt)).
 
 ## Results
 
 All 32 RTL runs of V6 pass (27 programs in mode `ff`, the five that load and
 store also in mode `fs`); [`../data/verification_results.csv`](../data/verification_results.csv)
 lists them with their cycle counts. Every run reports its cycles from the end
-of reset to the program's final self-loop; all eight versions give identical
-counts ([`../data/cycle_counts.csv`](../data/cycle_counts.csv), per-version
-results in [`../evidence/rtl/`](../evidence/rtl/)).
+of reset to the program's final self-loop. All eight versions pass all 32
+runs and the waveform checks, and give identical counts except one cycle in
+`27_branch_misaligned_target` (V4–V6: 78, the others 77; explained in
+[`../doc/revisions.md`](../doc/revisions.md))
+([`../data/cycle_counts.csv`](../data/cycle_counts.csv), per-version results
+in [`../evidence/rtl/`](../evidence/rtl/)).
 
 Every synthesized netlist of every version also passes tests 01–24 at gate
 level, zero-delay, at its own achieved period (results in

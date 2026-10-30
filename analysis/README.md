@@ -128,8 +128,8 @@ complete matched-speed table is
 Every version's 2.0 ns netlist achieves a period of at most 2.0 ns, so all
 eight are simulated at 2.0 ns (500 MHz), with 100% annotation coverage. Each
 activity window covers one run of the program, from the end of reset to its
-final self-loop, and every version runs each program in the same number of
-cycles, so energy per run compares the same work. How the activity is
+final self-loop, and every version runs each of these programs in the same
+number of cycles, so energy per run compares the same work. How the activity is
 produced is in the [power evidence notes](../evidence/power/methodology/README.md).
 
 | Version | `20_power_bench` (mixed) | `24_mac_loops` (MAC) | Energy per run: mixed / MAC | `08_multiplier` |

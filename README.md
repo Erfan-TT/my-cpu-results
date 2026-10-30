@@ -23,9 +23,12 @@ multiplier, P4 adder, hazard detection, forwarding) in
 
 ## Results
 
-All eight versions run every test program in exactly the same number of
-cycles ([`data/cycle_counts.csv`](data/cycle_counts.csv)), so a version's speed
-is its achieved clock period alone. Achieved period is
+All eight versions run the test programs in the same number of cycles
+([`data/cycle_counts.csv`](data/cycle_counts.csv)), with one exception of one
+cycle: in `27_branch_misaligned_target` V4–V6 take 78 cycles instead of 77,
+because V4 no longer keeps a branch with a misaligned target out of the BTB.
+On every workload used for timing and power the counts are identical, so a
+version's speed is its achieved clock period alone. Achieved period is
 `requested period − worst slack`: the period at which that netlist meets
 timing.
 
